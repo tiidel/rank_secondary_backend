@@ -27,6 +27,9 @@ class VerifyEmail(GenericAPIView):
         try:
             response = jwt.decode(token,settings.SECRET_KEY, algorithms=['HS256'])
             user = User.objects.get(id=response['user_id'])
+            print('----------------------------------')
+            print(user.email_verified)
+            print('----------------------------------')
             if not user.email_verified:
                 user.email_verified = True
                 user.is_active = True

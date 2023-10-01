@@ -23,7 +23,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     # path('admin/', admin.site.urls),
-    path('firebase/', FireConnect.as_view(), name='firebase'),
+   #  path('firebase/', FireConnect.as_view(), name='firebase'),
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
     path('api/v1/', include('school.urls'), name='SCHOOL'),
     path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
