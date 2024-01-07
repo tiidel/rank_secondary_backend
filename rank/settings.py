@@ -5,7 +5,6 @@ import dj_database_url
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-TEMPLATES_DIRS = os.path.join(BASE_DIR, 'templates')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-25pr@n8=-r4!6d1hu9@mpe)tl(ab(lc7@v2*80*+=p)0l5$!vl'
@@ -77,7 +76,7 @@ ROOT_URLCONF = 'rank.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [TEMPLATES_DIRS],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
