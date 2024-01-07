@@ -8,6 +8,9 @@ import pyrebase
 def index(request):
     return render(request, 'index.html')
 
+def not_found(request, exception):
+    return render(request, 'not_found.html')
+
 
 config={
     "apiKey": "AIzaSyAXhQ7QEcb6PctU4FPCe34jzYIf-TtkGTw",
