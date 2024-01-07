@@ -4,8 +4,11 @@ from django.urls import path, include
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from .views import FireConnect
+from .views import FireConnect, index
 
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.conf import settings
+from django.conf.urls.static import static
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -26,7 +29,11 @@ urlpatterns = [
    #  path('firebase/', FireConnect.as_view(), name='firebase'),
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
     path('api/v1/', include('school.urls'), name='SCHOOL'),
-    path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('', index, name='index'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
+urlpatterns += staticfiles_urlpatterns()
+urlpatterns += static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

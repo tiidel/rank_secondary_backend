@@ -5,7 +5,7 @@ import dj_database_url
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+TEMPLATES_DIRS = os.path.join(BASE_DIR, 'templates')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-25pr@n8=-r4!6d1hu9@mpe)tl(ab(lc7@v2*80*+=p)0l5$!vl'
@@ -13,19 +13,12 @@ SECRET_KEY = 'django-insecure-25pr@n8=-r4!6d1hu9@mpe)tl(ab(lc7@v2*80*+=p)0l5$!vl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*', 'localhost:3000', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'core',
-    'school',
-    
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'drf_yasg',
-     "corsheaders",
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -33,6 +26,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
+    
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'django_extensions',
+    'corsheaders',
+     
+    'core',
+    'school',
 ]
 
 AUTH_USER_MODEL = 'core.user'
@@ -75,7 +77,7 @@ ROOT_URLCONF = 'rank.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATES_DIRS],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -95,7 +97,9 @@ WSGI_APPLICATION = 'rank.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
+DATABASES = {
+    'default': dj_database_url.parse(config('DATABASE_URL'))
+}
 
 
 # Password validation
@@ -137,6 +141,9 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
+
+STATICFILES_DIRS = os.path.join(BASE_DIR, 'static'),
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build', 'static')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

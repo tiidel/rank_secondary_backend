@@ -5,6 +5,10 @@ from rest_framework.views import APIView
 import pyrebase
 
 
+def index(request):
+    return render(request, 'index.html')
+
+
 config={
     "apiKey": "AIzaSyAXhQ7QEcb6PctU4FPCe34jzYIf-TtkGTw",
     "authDomain": "ranksecondary.firebaseapp.com",
