@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from rest_framework_simplejwt import tokens
+    
 from .models import Student, Subject, Department, School,Level, Staff, Registration, Guardian
-from .serializer import SchoolSerializer, SubjectSerializer, StudentSerializer, DepartmentSerializer, LevelSerializer, ProgramSerializer, StaffSerializer, RegistrationSerializer, GuardianSerializer
-from .serializer import ProgramSerializer
+from .serializer import *
+
 from rest_framework import generics
 from rest_framework import viewsets
 from rest_framework.generics import GenericAPIView

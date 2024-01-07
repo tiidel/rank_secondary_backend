@@ -1,4 +1,4 @@
-# from django.contrib import admin
+from django.contrib import admin
 from django.urls import path, include
 
 from rest_framework import permissions
@@ -22,7 +22,7 @@ schema_view = get_schema_view(
 
 
 urlpatterns = [
-    # path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),
    #  path('firebase/', FireConnect.as_view(), name='firebase'),
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
     path('api/v1/', include('school.urls'), name='SCHOOL'),

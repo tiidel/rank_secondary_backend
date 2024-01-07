@@ -4,6 +4,11 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.utils.translation import gettext_lazy as _
 import jwt
+import uuid
+from django_extensions.db.models import TimeStampedModel, ActivatorModel
+
+from safedelete.models import SafeDeleteModel
+
 # Create your models here.
 from django.conf import settings
 from django.utils import timezone
@@ -42,6 +47,7 @@ class customUserManager(UserManager):
         return self._create_user(username, email, password, **extra_fields)
 
     def create_superuser(self, username, email,  password=None, **extra_fields):
+        extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
@@ -78,14 +84,32 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
             "unique": _("A user with that username already exists."),
         },
     )
+    
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
+    
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
+    
     email = models.EmailField(_("email address"), blank=False, unique=True)
+    
+    date_of_birth = models.DateField(null=True, blank=True)
+    
+    avatar = models.ImageField(upload_to='images', null=True, blank=True)
+    
+    phone = models.CharField(_("Mobile contact number"), max_length=20, null=True, blank=False)
+    
+    phone_alt = models.CharField(_("Alternate contact information"), max_length=20, null=True, blank=True)
+    
+    address = models.CharField(_('location of residence of user'), max_length=256, null=True, blank=True)
+    
+    address_alt = models.CharField(_('location of residence of user'), max_length=256, null=True, blank=True)
+
+    
     is_staff = models.BooleanField(
         _("staff status"),
         default=False,
         help_text=_("Designates whether the user can log into this admin site."),
     )
+    
     is_active = models.BooleanField(
         _("active"),
         default=False,
@@ -94,7 +118,9 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
             "Unselect this instead of deleting accounts."
         ),
     )
+    
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
+    
     email_verified = models.BooleanField(
         _("email_verified"),
         default=False,
@@ -102,15 +128,34 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
             "Designates whether this user email is verified "
         ),
     )
+    
     school = models.CharField(_("name of school"), max_length=250, default='university')
 
+    gender = models.CharField(max_length=50, null=True, blank=True)
     
 
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"]
+    REQUIRED_FIELDS = ["username", "first_name", "last_name"]
 
     objects = customUserManager()
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
+
+
+class BaseModel(TimeStampedModel, ActivatorModel, SafeDeleteModel):
+    
+    id = models.UUIDField(
+        default=uuid.uuid4, null=False, blank=False, unique=True, primary_key=True
+    )
+    
+    is_deleted = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(_("registration date"), auto_now_add=True)
+    
+    update_at = models.DateTimeField(_("modification of model"), auto_now=True)
+    
+    created_by = models.CharField( _("Email of user who creates model"), max_length=100, null=True, blank=True)
+
+    updated_by = models.CharField( _("Email of user who creates model"), max_length=100, null=True, blank=True)

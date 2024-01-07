@@ -27,9 +27,7 @@ class VerifyEmail(GenericAPIView):
         try:
             response = jwt.decode(token,settings.SECRET_KEY, algorithms=['HS256'])
             user = User.objects.get(id=response['user_id'])
-            print('----------------------------------')
-            print(user.email_verified)
-            print('----------------------------------')
+            
             if not user.email_verified:
                 user.email_verified = True
                 user.is_active = True
@@ -41,7 +39,11 @@ class VerifyEmail(GenericAPIView):
         except Exception as e:
             print(e)
             return Response({"error": e}, status=status.HTTP_403_FORBIDDEN)
-        
+
+class Utils: 
+    def get_user_by_email(email):
+        user = User.objects.filter(email=email).first()  
+        return user  
 
 class RegisterAPIView(GenericAPIView):
 
@@ -88,16 +90,22 @@ class LoginAPIView(GenericAPIView):
         email = request.data.get('email', None)
         password = request.data.get('password', None)
 
+        pre_user = Utils.get_user_by_email(email)
+        
+        if not pre_user:
+            return Response({"message": "No such user"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not pre_user.is_active:
+            return Response({"message": "Account not active"}, status=status.HTTP_400_BAD_REQUEST)
+        
         user = authenticate(username=email, password = password)
         
         if not user:
             return Response({"message": "Invalid credentials, try again"}, status=status.HTTP_401_UNAUTHORIZED)
         
+        
         serializer = self.serializer_class(user)
 
-        # if serializer.is_valid():
-        #     return Response(serializer.data, status=status.HTTP_202_ACCEPTED )
-        # return Response('valid user, unknown serializer')
         refresh = RefreshToken.for_user(user)
         
         return Response({
@@ -109,7 +117,7 @@ class LoginAPIView(GenericAPIView):
         
 class UserView(APIView):
 
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
