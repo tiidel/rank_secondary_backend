@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+{% if request.user.is_superuser %}
+
+<div class="d-flex m-auto align-items-center w-75">
+    <div class="card w-50 m-2">
+        <div class="img_wrapper" >
+            <img src="../static/img/swagger.png" class="card-img-top" alt="Swagger">
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">Swagger</h5>
+            <p class="card-text">Swagger documentation of your application (Recommended)**  </p>
+            <a href="/swagger" class="btn btn-primary">Visit API Doc</a>
+        </div>
+    </div>
+    <div class="card w-50 m-2">
+        <div class="img_wrapper" >
+            <img src="../static/img/redoc.png" class="card-img-top" alt="...">
+        </div>
+    
+        <div class="card-body">
+            <h5 class="card-title">Redoc</h5>
+            <p class="card-text">Redoc documentation for rank secondary. It is alright  </p>
+            <a href="/redoc" class="btn btn-primary">Visit API Doc</a>
+        </div>
+    </div>
+    
+
+</div>
+  
+{% else %}
+    <!-- Not Found Page HTML -->
+<div class="page-not-found pt-5">
+    <div class="bg-light shadow">
+        <h2>You do not have permission to access this resource </h2>
+</div>
+{% endif %}
+
+{% endblock %}
