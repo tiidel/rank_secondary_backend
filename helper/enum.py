@@ -31,6 +31,8 @@ class UserRole(models.TextChoices):
     
     Student: Any = 'student', 'Student'
 
+    Guardian: Any = 'guardian', 'Guardian'
+
 
 class GuardianType(models.TextChoices):
     """--- Type of guadian student has ---"""

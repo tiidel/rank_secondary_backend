@@ -4,7 +4,6 @@ from rest_framework.views import Response, status
 from rest_framework.views import APIView
 import pyrebase
 
-
 def index(request):
     return render(request, 'index.html')
 

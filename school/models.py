@@ -266,8 +266,6 @@ class Staff(BaseModel):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
-    subject = models.ManyToManyField("school.Subject", related_name='subjects', verbose_name=_("subject"), default=None)
-    
     role = models.CharField(_("type e.g Teacher, Administrator"), max_length=256, choices=UserRole.choices, blank=False, null=False)
     
     expirience = models.IntegerField(_("Years of expirience in post"), default=0)
@@ -304,6 +302,24 @@ class Staff(BaseModel):
             return age
 
 
+class Teacher(models.Model):
+    """ --- Designnates a teacher as a staff --- """
+    id = models.BigAutoField(primary_key=True) 
+
+    staff_id = models.OneToOneField(Staff, on_delete=models.CASCADE)
+
+    subject = models.ManyToManyField("school.Subject", related_name='subjects', verbose_name=_("subject"), default=None)
+
+    class Meta:
+        verbose_name = _("Teacher"),
+        verbose_name_plural = _("Teachers")
+    
+    def __str__(self):
+        return self.subject
+
+
+
+
 class Subject(models.Model):
     
     name = models.CharField(max_length=100, blank=False, null=False)
@@ -312,7 +328,7 @@ class Subject(models.Model):
     
     sub_coef = models.IntegerField(_("Value of the subject (coefficient)"), default=1, null=False, blank=False)
     
-    instructor = models.ManyToManyField("school.Staff", related_name='teacher')
+    instructor = models.ManyToManyField("school.Teacher", related_name='teacher')
     
     course_duration = models.IntegerField(_("number of hours"))
 
