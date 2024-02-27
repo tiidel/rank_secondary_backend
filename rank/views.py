@@ -3,6 +3,8 @@ from django.shortcuts import render
 from rest_framework.views import Response, status
 from rest_framework.views import APIView
 import pyrebase
+from rest_framework.decorators import api_view
+from tenant.models import Client, Domain
 
 def index(request):
     return render(request, 'index.html')
@@ -25,6 +27,29 @@ config={
 firebase=pyrebase.initialize_app(config)
 authe = firebase.auth()
 database=firebase.database()
+
+
+
+@api_view(['POST'])
+def create_tenant_view(request):
+    if request.method == 'POST':
+        tenant_name = request.data.get('tenant_name')
+        school_name = request.data.get('school_name')
+
+        new_tenant = Client(schema_name=tenant_name, name=school_name)
+        new_tenant.save()
+
+        new_domain = Domain(tenant=new_tenant, name=tenant_name)
+        new_domain.save()
+
+        print(new_tenant)
+        print(new_domain)
+
+        return Response({"message": "creating tenant"}, status=status.HTTP_200_OK)
+    
+    return Response({"message": "method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
 
 
 class FireConnect(APIView):
