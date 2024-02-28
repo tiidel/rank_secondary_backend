@@ -9,6 +9,7 @@ from django.utils import timezone, text, crypto
 from django.core.validators import FileExtensionValidator
 from helper.enum import *
 from core.models import BaseModel, SchoolBaseModel
+from django.contrib.postgres.fields import ArrayField
 #
 #
 
@@ -98,7 +99,7 @@ class Department(models.Model):
     
     name = models.CharField(_("Education type e.g General, Technical"), choices=EducationType.choices, max_length=255, null=False, blank=False)
     
-    language_supports = models.CharField(_("List of languages that the school uses"), max_length=500, null=False, blank=False)
+    language_supports = ArrayField(models.CharField(_("List of languages that the school uses"), max_length=100), default=list)
     
     class Meta:
         verbose_name = _("Department")
