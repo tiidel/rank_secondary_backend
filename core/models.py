@@ -8,6 +8,7 @@ import uuid
 from django_extensions.db.models import TimeStampedModel, ActivatorModel
 
 from safedelete.models import SafeDeleteModel
+from django.contrib.postgres.fields import ArrayField
 
 # Create your models here.
 from django.conf import settings
@@ -15,6 +16,8 @@ from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.contrib.auth.models import Group
+from django.db import migrations
+
 
 from datetime import datetime, timedelta
 from helper.models import TrackingModel
@@ -132,6 +135,8 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
             "Designates whether this user email is verified "
         ),
     )
+
+    schools = ArrayField(models.CharField(_("list of school tenants"), max_length=100), default=list)
     
     school = models.CharField(_("name of school"), max_length=250, default='university')
 
@@ -183,3 +188,4 @@ class BaseModel(TimeStampedModel, ActivatorModel, SafeDeleteModel):
     
     # school = models.ForeignKey("school.School", related_name="school", on_delete = models.CASCADE)
     
+

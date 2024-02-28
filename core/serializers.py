@@ -5,6 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed    
 
 from .models import User
+from django.contrib.auth.models import Group
 
 
 
@@ -44,12 +45,16 @@ from .models import User
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=256, min_length=6, write_only=True)
+    groups = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True, required=False)
     class Meta:
         model = User
         fields = '__all__'
     
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        groups = validated_data.pop('groups', [])
+        user = User.objects.create_user(**validated_data)
+        user.groups.set(groups)
+        return user
 
 class LoginSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=256, min_length=6, write_only=True)
