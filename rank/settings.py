@@ -39,6 +39,7 @@ SHARED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'django_extensions',
+    'celery'
 ]
 
 
@@ -164,6 +165,8 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=15),
 }
 
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 EMAIL_USE_TLS = True     
 EMAIL_HOST='smtp.gmail.com'

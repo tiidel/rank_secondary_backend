@@ -85,3 +85,17 @@ class FeeInstallments(models.TextChoices):
     Complete: Any = 'complete', 'Complete'
     
 
+class JobApplicantStatus(models.TextChoices):
+    """--- Applicant status as application is forwarded ---"""
+    
+    Active: Any = 'active', 'Active'
+    
+    New: Any = 'new', 'New'
+    
+    Accepted: Any = 'accepted', 'Accepted'
+    
+    Low: Any = 'Low', 'Low'
+    
+    Unqualified: Any = 'unqualified', 'Unqualified'
+    
+

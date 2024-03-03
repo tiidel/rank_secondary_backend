@@ -26,6 +26,8 @@ class School(SchoolBaseModel):
     name = models.CharField(_("School Name"), max_length=2560, blank=False, null=False)
     
     country = models.CharField(_("Country"), max_length=100, blank=False, null=False)
+
+    country_code = models.CharField(_("e.g +237 or +1"), max_length=100, blank=False, null=False)
     
     principal_name = models.CharField(_("Dean of School"), max_length=100, blank=True, null=True)
     
@@ -130,12 +132,18 @@ class Invitation(BaseModel):
         ('accepted', 'Accepted'),
         ('declined', 'Declined'),
     )
+    recipient_name = models.CharField(_("Full names of user you want to invite"),null=False, blank=False, max_length=300)  
+
     recipient_email = models.EmailField(_("Email of users to send invititations to"),null=False, blank=False, max_length=50)  
 
     invite_status = models.CharField(_("State of the invitation"), max_length=20, choices=INVITATION_STATUS_CHOICES, default='pending')
 
-    school_name = models.CharField(_("School you are sending invites to"), max_length=50, null=False, blank=False)
+    tenant_name = models.CharField(_("School you are sending invites to"), max_length=50, null=False, blank=False)
+    
+    school = models.ForeignKey("school.School", on_delete=models.CASCADE)
    
+    role = models.CharField(_("This refers to the role you are inviting the member for"), choices=UserRole.choices, max_length=100, blank=False, null=False)
+
     invitation_code = models.SlugField(unique=True, editable=False)
     
     message = models.TextField(blank=True)
@@ -172,9 +180,70 @@ class Invitation(BaseModel):
         verbose_name_plural = _("Invitations")
     
     def __str__(self):
-        return f"{self.email} - {self.school_name}"
+        return f"{self.recipient_email} - {self.tenant_name}"
+
+class Job(models.Model):
+
+    applicant = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    search_status = models.CharField(_("Checks whether or not user is actively searching"), choices=JobApplicantStatus.choices, max_length=256, null=False, default=JobApplicantStatus.Active)
     
+    role = models.CharField(_("Role he/she is applying for"), max_length=256, null=False)
+
+    cv = models.FileField(upload_to="applicant_cv", validators=[FileExtensionValidator(['pdf', 'txt', 'docx'])])
     
+    summary = models.CharField(_("Summary of job application"), max_length=5000, null=False)
+    
+    tenant = models.CharField(_("School you are applying into"), max_length=50, null=True, blank=True)
+
+    country = models.CharField(_("Country of origin of applicant"), max_length=500, null=True, blank=True)
+    
+    rejection_count = models.IntegerField(_("Number of times the applicant has been rejected"), default=0)
+
+    application_date = models.DateTimeField(_("Date and time of application"), auto_now_add=True)
+
+    interview_date = models.DateTimeField(_("Date and time of interview"), null=True, blank=True)
+    
+    years_of_experience = models.IntegerField(_("Years of experience"), null=True, blank=True)
+
+    references = models.TextField(_("References"), null=True, blank=True)
+
+    expected_salary = models.DecimalField(_("Expected Salary"), max_digits=10, decimal_places=2, null=True, blank=True)
+
+    feedback = models.TextField(_("Feedback provided by the interviewer"), null=True, blank=True)
+    
+    meeting_url = models.URLField(_("URL for the interview meeting"), null=True, blank=True)
+
+    is_hired = models.BooleanField(_("Applicant has been hired for the position"), default=False)
+    
+    rejected = models.BooleanField(_("If the applicant has been rejected from the school"), default=False)
+
+    def save(self, *args, **kwargs):
+        if self.rejection_count >= 100:
+            self.search_status = self.JobApplicantStatus.Unqualified
+        
+        elif self.rejection_count >= 50:
+            self.search_status = self.JobApplicantStatus.Low
+        
+        if self.is_hired:
+            self.rejection_count = 0
+
+        super(Job, self).save(*args, **kwargs)
+
+class SchoolStaffApply(models.Model): 
+
+    applicant = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    role = models.CharField(_("Role he/she is applying for"), max_length=256, null=False)
+
+    tenant = models.CharField(_("School you are applying into"), max_length=50)
+    
+    is_accepted = models.BooleanField(_("Displays whether or not user is accepted into school"), default=False)
+    
+    hidden = models.BooleanField(_("Whether or not admin wants this to display"), default=False)
+
+    def __str__(self):
+        return f'{self.role} - {self.tenant}'
     
 class Event(models.Model):
     
@@ -259,7 +328,7 @@ class Class(models.Model):
     
     class_range = models.CharField(_("Approximate number of students in class"), max_length=50)
     
-    h_o_d = models.CharField(max_length=100)
+    h_o_d = models.CharField(max_length=100, null=True, blank=True)
 
 
 
@@ -275,7 +344,7 @@ class Staff(BaseModel):
     
     billing_method = models.CharField(_("Prefered payment method e.g paypal or MTN"), max_length=50)
     
-    payment_method = models.ForeignKey(PaymentDetail, verbose_name=_(""), on_delete=models.CASCADE)
+    payment_method = models.ForeignKey(PaymentDetail, verbose_name=_(""), on_delete=models.CASCADE, null=True)
     
     bio = models.CharField(max_length=3000, null=False, blank=True)
     
