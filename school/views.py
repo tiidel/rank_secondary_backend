@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Student, Subject, Department, School,Level, Staff, Registration, Guardian
 from .serializer import *
 from helper.enum import JobApplicantStatus
+from helper.workers import *
 from core.models import User
 from core.serializers import LoginSerializer
 
@@ -461,7 +462,8 @@ class SubjectLevelView(APIView):
         return lvl
     
     def get(self, request):
-        pass
+        connection_test.delay(33, 20)
+        return Response({"message": "This response is coming normally thank you"}, status=status.HTTP_200_OK)
 
     def post(self, request, level):
         lvl = self.find_level_by_id(level)

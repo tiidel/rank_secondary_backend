@@ -32,6 +32,7 @@ urlpatterns = [
     path('jobs/', JobApplicantsView.as_view(), name='job_portal'),
     
     # TODO: CREATE STAFF MEMBER //https://rank-secondary.vercel.app/staffs/create
+    path('subjects/', SubjectLevelView.as_view(), name='school_subjects'),
 
     
 ]

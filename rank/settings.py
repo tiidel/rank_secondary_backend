@@ -113,6 +113,9 @@ WSGI_APPLICATION = 'rank.wsgi.application'
 # }
 
 
+DATABASE_ROUTERS = [
+    'django_tenants.routers.TenantSyncRouter',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -165,9 +168,15 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=15),
 }
 
+## CELERY BROKER SETTING
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_EAGER_PROPAGATES = False
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_WORKER_CONCURRENCY = 4 
 
+## CONFIGURATION FOR MAIL SERVER
 EMAIL_USE_TLS = True     
 EMAIL_HOST='smtp.gmail.com'
 EMAIL_PORT=587
@@ -175,6 +184,7 @@ EMAIL_HOST_USER= "rank.tiidel@gmail.com"
 EMAIL_HOST_PASSWORD= "zgqqndovexogtatw"
 EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'
 
+## TENANT MANAGEMENT
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 TENANT_MODEL = "tenant.Client"

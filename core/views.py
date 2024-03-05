@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate
 from .models import User
 from helper.helper import CLIENT_URL
 from core.utils import Util
+from helper.workers import send_email_with_template
 from .serializers import RegisterSerializer, LoginSerializer, ResetPasswordSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -61,14 +62,16 @@ class RegisterAPIView(GenericAPIView):
 
         relativeLink = reverse('verify-email')
         absurl = 'http://'+current_site+relativeLink + "?token=" + str(token)
-        email_body = f'Hi there,\n Welcome to SACRETE HEART COLLEGE management system {user.username} click the link below to activate your account\n\n {absurl}'
         data = {
-            'email_body': email_body,
-            'to_email': user.email,
-            'email_subject': 'Confirm account',
+            'email_subject': 'Account created successfully',
         }
+        
+        context = {
+            'user': user,
+            'reset_url': absurl
+        }
+        send_email_with_template.delay(data, 'Welcome.html', context, [user["email"]])
 
-        Util.send_email(data)
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -80,7 +83,7 @@ class RegisterAPIView(GenericAPIView):
             user = User.objects.get(email=user_data['email'])
 
             token = RefreshToken.for_user(user).access_token
-            self.sendRegisterEmail(user, request, token)
+            self.sendRegisterEmail(user_data, request, token)
 
             return Response( serializer.data, status=status.HTTP_201_CREATED )
         return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
