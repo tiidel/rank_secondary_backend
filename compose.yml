@@ -1,12 +1,23 @@
 version: '3.8'
 
 services:
+ redis:
+   image: "redis:7.0.11-alpine"
  web:
   build: .
-  command: "python manage.py runserver"
+  command: ["./wait-for-it.sh", "postgres:5432", "--", "python", "run.py", "runserver", "0.0.0.0:8001"]
   depends_on:
     - "postgres"
+    - "redis"
   ports:
    - "8000:8001"
+  environment:
+   - DEBUG=1
+   - SECRET_KEY=3ertyu8ifndasou9fijnfodl
+   - DB_NAME=rankd
+   - DB_USER=postgres
+   - DB_PASSWORD=prodigy
+   - DB_HOST=localhost
+   - DB_PORT=5432
  postgres:
   image: "postgres:14-alpine"

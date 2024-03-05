@@ -17,6 +17,7 @@ from django.utils.encoding import smart_str, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 
+from rest_framework.parsers import MultiPartParser
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 
@@ -176,3 +177,31 @@ class PasswordTokenCheck(GenericAPIView):
     def get(self, request, uidb64, token):
         data = request.data
         print(data)
+
+
+class UpdateUserInformation(GenericAPIView):
+    parser_classes = [MultiPartParser] 
+    serializer_class = RegisterSerializer
+
+    def find_user_by_id(self, id):
+        user = User.objects.filter(id=id).first()
+        return user
+    
+    def get(self, request, user_id):
+        user = self.find_user_by_id(user_id)
+        serializer = self.serializer_class(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def patch(self, request, user_id):
+
+        user = self.find_user_by_id(user_id)
+        if not user:
+            return Response({"mesage": "No user with given id"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.serializer_class(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        
+        return Response(serializer.errors, status=status.HTTP_200_OK)

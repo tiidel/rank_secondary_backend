@@ -25,7 +25,8 @@ urlpatterns = [
     path('invitation/<str:invite_id>/', InviteConfirmationView.as_view(), name='confirm_invitation'),
     
     #REQUEST ACCESS
-    path('join-school/<str:school_id>', RequestAccessToSchool.as_view(), name='staff_invitation'),
+    path('join-school/<str:school_id>/', RequestAccessToSchool.as_view(), name='staff_invitation'),
+    path('join-school/<str:school_id>/<int:id>/', ApplicationReaction.as_view(), name='invitation_reaction'),
 
     # JOBS
     path('jobs/', JobApplicantsView.as_view(), name='job_portal'),

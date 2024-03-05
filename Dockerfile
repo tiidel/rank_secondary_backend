@@ -4,7 +4,7 @@ WORKDIR /rank
 
 RUN apk add --no-cache gcc musl-dev linux-headers
 
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip setuptools
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 

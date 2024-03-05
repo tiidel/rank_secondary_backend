@@ -20,6 +20,7 @@ from django.contrib.auth.models import Group
 import base64
 import uuid
 from django.http import HttpResponseBadRequest
+from django.core.exceptions import ValidationError
 
 from django.db.models import Case, CharField, Value, When
 
@@ -382,16 +383,16 @@ class RequestAccessToSchool(APIView):
     def check_school_id(self, school_code, school_id):
         
         if not self.is_valid_school(school_id):
-            raise HttpResponseBadRequest("Invalid school ID")
+            return Response({"school_id": "Invalid school ID"}, status=status.HTTP_400_BAD_REQUEST)
 
         compressed_school_id = self.compress_uuid(school_id)
 
         if compressed_school_id != school_code:
-            raise HttpResponseBadRequest("This code is not recorgnized with associated code")
+            return Response({"school_id": "This code is not recognized with associated school."}, status=status.HTTP_400_BAD_REQUEST)
         
         return compressed_school_id
     
-    def get(self, request):
+    def get(self, request, school_id):
         user_list = SchoolStaffApply.objects.filter(hidden=False)
         serializers = self.serializer_class(user_list, many=True)
 
@@ -414,11 +415,60 @@ class RequestAccessToSchool(APIView):
         return Response({"message": "Provided code is invalid" }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ApplicationReaction(APIView):
+    serializer_class = SchoolStaffApplySerializer
+    
+    def get_application_by_id(self, id):
+        application = SchoolStaffApply.objects.filter(id=id).first()
+        return application
+    
+    def get(self, request, school_id, id):
+        application = self.get_application_by_id(id)
+        serializer = self.serializer_class(application)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, school_id, id):
+        application = self.get_application_by_id(id)
+        if not application:
+            return Response({"message": "Invalid application with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializers = self.serializer_class(application, data=request.data, partial=True)
+
+        if serializers.is_valid():
+            serializers.save()
+            # TODO: Send confirmation EMAIL
+            # SEND POST WITH ACCEPT = TRUE AND TENANT
+            return Response(serializers.data, status=status.HTTP_202_ACCEPTED)
+        
+        return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    
+    def delete(self, request, school_id, id):
+        application = self.get_application_by_id(id)
+        if not application:
+            return Response({"message": "No Appliation with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        application.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+
+
+
+class SubjectLevelView(APIView):
+    def find_level_by_id(self, lvl_id):
+        lvl = Level.objects.filter(id=lvl_id).first()
+        return lvl
+    
+    def get(self, request):
+        pass
+
+    def post(self, request, level):
+        lvl = self.find_level_by_id(level)
+        
+
 
 # class StaffView(APIView):
-
-
-# class SubjectView(APIView):
 
 
 # class GuardianView(APIView):

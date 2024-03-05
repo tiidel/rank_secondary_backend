@@ -27,7 +27,7 @@ class School(SchoolBaseModel):
     
     country = models.CharField(_("Country"), max_length=100, blank=False, null=False)
 
-    country_code = models.CharField(_("e.g +237 or +1"), max_length=100, blank=False, null=False)
+    country_code = models.CharField(_("e.g +237 or +1"), max_length=100, blank=True, null=True)
     
     principal_name = models.CharField(_("Dean of School"), max_length=100, blank=True, null=True)
     
@@ -231,8 +231,15 @@ class Job(models.Model):
         super(Job, self).save(*args, **kwargs)
 
 class SchoolStaffApply(models.Model): 
-
-    applicant = models.ForeignKey(User, on_delete=models.CASCADE)
+    first_name = models.CharField(_("first name"), max_length=150, blank=True)
+    
+    last_name = models.CharField(_("last name"), max_length=150, blank=True)
+    
+    email = models.EmailField(_("email address"), blank=False, unique=True)
+    
+    avatar = models.ImageField(upload_to='images', null=True, blank=True)
+    
+    phone = models.CharField(_("Mobile contact number"), max_length=20, null=True, blank=False)
 
     role = models.CharField(_("Role he/she is applying for"), max_length=256, null=False)
 
@@ -400,7 +407,7 @@ class Subject(models.Model):
     
     instructor = models.ManyToManyField("school.Teacher", related_name='teacher')
     
-    course_duration = models.IntegerField(_("number of hours"))
+    course_duration = models.IntegerField(_("number of hours"), null=True, blank=True)
 
     class Meta:
         verbose_name = _("Subject")
@@ -408,6 +415,7 @@ class Subject(models.Model):
         
     def __str__(self):
         return self.name
+
 
 
 class Student(models.Model):
