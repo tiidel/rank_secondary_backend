@@ -231,6 +231,8 @@ class Job(models.Model):
         super(Job, self).save(*args, **kwargs)
 
 class SchoolStaffApply(models.Model): 
+    """--- PEOPLE CAN APPLY TO JOIN A PARTICULAR SCHOOL ----"""
+
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
     
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
@@ -334,6 +336,8 @@ class Class(models.Model):
     enrolment = models.IntegerField(default=0)
     
     class_range = models.CharField(_("Approximate number of students in class"), max_length=50)
+    
+    instructor = models.ForeignKey("school.Staff", on_delete=models.CASCADE, null=True)
     
     h_o_d = models.CharField(max_length=100, null=True, blank=True)
 

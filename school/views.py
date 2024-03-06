@@ -5,7 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 
     
-from .models import Student, Subject, Department, School,Level, Staff, Registration, Guardian
+from .models import Student, Subject, Department, School,Level, Staff, Registration, Guardian, Teacher
 from .serializer import *
 from helper.enum import JobApplicantStatus
 from helper.workers import *
@@ -239,6 +239,36 @@ class ClassView(APIView):
         return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
     
 
+class ClassInstructor(APIView):
+    serializer_class = ClassSerializer
+    permission_classes = [IsAuthenticated]
+
+    def find_class_by_id(self, id):
+        return Class.objects.filter(id=id).first()
+    
+    def find_staff_by_id(self, id):
+        return Staff.objects.filter(id=id).first()
+    
+    def patch(self, request, class_id):
+        cls = self.find_class_by_id(class_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        staff_id = request.data.get('instructor')
+        staff = self.find_staff_by_id(staff_id)
+
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        cls.instructor = staff
+        cls.save()
+        
+        print(cls)
+        print(staff)
+
+        return Response('serializers.data', status=status.HTTP_202_ACCEPTED)
+
+
 
 class ClassItemView(APIView):
     serializer_class = ClassSerializer
@@ -347,15 +377,15 @@ class InviteConfirmationView(APIView):
             return Response({"message": "We cannot find an invitation for this email"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            username = request.data.get('username')
-            user_exist = User.objects.filter(username=username).first()
+            email = request.data.get('email')
+            user_exist = User.objects.filter(email=email).first()
             
             if user_exist:
                 return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
             
 
             user = User.objects.create_user(**request.data)
-            user_in_group = self.assign_user_to_group(user, invite_role)
+            self.assign_user_to_group(user, invite_role)
             staff_created = self.create_staff_membership(user, invite_role)
             self.accept_invitation(invite_id)
 
@@ -369,6 +399,15 @@ class InviteConfirmationView(APIView):
         
         return Response("Returning something")
 
+
+class TeachersView(APIView):
+    serializer_class = StaffSerializer
+    def get(self, request):
+        teachers = Staff.objects.filter(role='teacher', is_deleted=False)
+        serializer = self.serializer_class(teachers, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+       
 
 class RequestAccessToSchool(APIView):
     serializer_class = SchoolStaffApplySerializer
@@ -454,8 +493,6 @@ class ApplicationReaction(APIView):
     
 
 
-
-
 class SubjectLevelView(APIView):
     def find_level_by_id(self, lvl_id):
         lvl = Level.objects.filter(id=lvl_id).first()
@@ -470,7 +507,186 @@ class SubjectLevelView(APIView):
         
 
 
-# class StaffView(APIView):
+
+class StaffView(APIView):
+    serializer_class = StaffSerializer
+
+    def create_staff_membership(self, user, role):
+        staff = Staff.objects.create(user=user, role=role)
+        return staff
+    
+    def assign_user_to_group(self, user, role):
+        group = Group.objects.get(name__iexact=role)
+        if group:
+            return group.user_set.add(user)
+        return Response({"message": "This is not a valid user role in your school"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        teachers = Staff.objects.filter(is_deleted=False)
+        serializer = self.serializer_class(teachers, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def send_registration_mail(self, user, role, tenant):
+        context = {
+            'user': user,
+            'role': role,
+            'tenant': tenant
+        }
+        send_email_with_template.delay(
+            data={
+                'email_subject': 'Your account has been created successfully',
+            },
+            template_name='staff_registration.html',
+            context=context,
+            recipient_list=[user['email']]
+        )
+
+    def post(self, request):
+        try:
+            staff_role = request.data.get('role')
+            email = request.data.get('email')
+            user_exist = User.objects.filter(email=email).first()
+            
+            if user_exist:
+                return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not staff_role:
+                return Response({"message": "You must provide a staff role"}, status=status.HTTP_400_BAD_REQUEST)
+            
+
+            user = User.objects.create_user(**request.data)
+            if not user:
+                return Response( {"message": "Unable to create user. Please fill details correctly"},  status=status.HTTP_400_BAD_REQUEST)
+            
+            self.assign_user_to_group(user, staff_role)
+            staff_created = self.create_staff_membership(user, staff_role)
+            
+            if staff_created:
+                user_serializer = LoginSerializer(user)
+
+                tenant = request.tenant.schema_name
+                self.send_registration_mail(user_serializer.data, staff_role, tenant)
+
+                return Response( user_serializer.data,  status=status.HTTP_201_CREATED)
+            return Response( "error creating staff",  status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as error:
+            print(error)
+            return Response( status=status.HTTP_400_BAD_REQUEST)
+ 
+
+class StaffItemView(APIView):
+    serializer_class = StaffSerializer
+    def get(self, request, staff_id):
+        staff = Staff.objects.filter(id=staff_id).first()
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(staff)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def patch(self, request, staff_id):
+        staff = Staff.objects.filter(id=staff_id).first()
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(staff, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, staff_id):
+        staff = Staff.objects.filter(id=staff_id).first()
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        staff.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+class StaffChangeRole(APIView):
+    serializer_class = LoginSerializer
+    def find_staff_by_id(self, id):
+        staff = Staff.objects.filter(id=id).first()
+        return staff
+
+    def send_change_role_email(self, user, role):
+        user.role = role
+        user.save()
+        user = self.serializer_class(user).data
+
+        context = {
+            'user': user,
+            'role': role
+        }
+        send_email_with_template.delay(
+            data={
+                'email_subject': 'Your role has been changed successfully',
+            },
+            template_name='staff_role_change.html',
+            context=context,
+            recipient_list=[user['email']]
+        )
+    
+    def send_promotion_email(self, user, role):
+        user.role = role
+        user.save()
+        user = self.serializer_class(user).data
+        context = {
+            'user': user,
+            'role': role
+        }
+        send_email_with_template.delay(
+            data={
+                'email_subject': 'Congratulations! You have been promoted',
+            },
+            template_name='staff_promotion.html',
+            context=context,
+            recipient_list=[user['email']]
+        )
+
+    def change_user_role(self, user, role):
+        user.groups.clear()
+        group = Group.objects.get(name__iexact=role)
+        if group:
+            return group.user_set.add(user)
+        
+    def add_user_role(self, user, role):
+        group = Group.objects.get(name__iexact=role)
+        if group:
+            return group.user_set.add(user)
+        
+    def patch(self, request, staff_id):
+        """----- CHANGE USER ROLE (REMOVE OLD ROLE) -----"""
+        role = request.data.get('role')
+        staff = self.find_staff_by_id(staff_id)
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        if not role:
+            return Response({"message": "You need to assign the new role"}, status=status.HTTP_404_NOT_FOUND)
+        
+        self.change_user_role(staff.user, role)
+        staff.role = role
+        self.send_change_role_email(staff.user, role)
+
+        serializer = StaffSerializer(staff)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+    
+    def put(self, request, staff_id):
+        """----- ADD USER TO NEW GROUP(PROMOTE WITHOUT REMOVING OLD ROLE) -----"""
+        role = request.data.get('role')
+        staff = self.find_staff_by_id(staff_id)
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        if not role:
+            return Response({"message": "You need to assign the new role"}, status=status.HTTP_404_NOT_FOUND)
+        
+        self.add_user_role(staff.user, role)
+        self.send_promotion_email(staff.user, role)
+        staff.role = role
+        
+        serializer = StaffSerializer(staff)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
 
 
 # class GuardianView(APIView):
