@@ -262,11 +262,9 @@ class ClassInstructor(APIView):
         
         cls.instructor = staff
         cls.save()
-        
-        print(cls)
-        print(staff)
+        serializers = ClassSerializer(cls)
 
-        return Response('serializers.data', status=status.HTTP_202_ACCEPTED)
+        return Response(serializers.data, status=status.HTTP_202_ACCEPTED)
 
 
 
@@ -494,16 +492,32 @@ class ApplicationReaction(APIView):
 
 
 class SubjectLevelView(APIView):
-    def find_level_by_id(self, lvl_id):
-        lvl = Level.objects.filter(id=lvl_id).first()
-        return lvl
+    serializer_class = SubjectSerializer
+    def find_class_by_id(self, cls_id):
+        cls = Class.objects.filter(id=cls_id).first()
+        return cls
     
-    def get(self, request):
-        connection_test.delay(33, 20)
-        return Response({"message": "This response is coming normally thank you"}, status=status.HTTP_200_OK)
+    def get_subjects_in_class(self, cls):
+        subjects = Subject.objects.filter(cls=cls)
+        return subjects
+    def get(self, request, cls_id):
+        cls = self.find_class_by_id(cls_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND) 
+        
+        subjects = self.get_subjects_in_class(cls)
+        serializer = self.serializer_class(subjects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request, level):
-        lvl = self.find_level_by_id(level)
+    def post(self, request, cls_id):
+        cls = self.find_class_by_id(cls_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(data=request.data)  
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 
 

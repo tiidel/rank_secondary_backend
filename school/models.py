@@ -413,6 +413,8 @@ class Subject(models.Model):
     
     course_duration = models.IntegerField(_("number of hours"), null=True, blank=True)
 
+    cls = models.ForeignKey(Class, on_delete=models.CASCADE, null=True)
+
     class Meta:
         verbose_name = _("Subject")
         verbose_name_plural = _("Subjects")
