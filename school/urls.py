@@ -8,6 +8,11 @@ urlpatterns = [
     #SCHOOL
     path('schools/', SchoolView.as_view(), name="school"),
     path('school-files/<str:id>/', SchoolFilesView.as_view(), name="school-form-view"),
+
+    #TERMS
+    path('terms/', TermAPIView.as_view(), name="terms"),
+    path('terms/<int:pk>/', TermAPIView.as_view(), name='term_detail'),
+    path('active-term/', ActiveTermView.as_view(), name='active_term'),
     
     # DEPARTMENT
     path('departments/', DepartementView.as_view(), name="department"),
@@ -45,5 +50,8 @@ urlpatterns = [
     # SUBJECTS
     path('subjects/<str:cls_id>/', SubjectLevelView.as_view(), name='school_subjects'),
 
+    #STUDENTS
+    path('students/', StudentView.as_view(), name='students'),
+    path('students/<str:cls_id>/', StudentsInClassView.as_view(), name='students'),
     
 ]

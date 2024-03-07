@@ -5,7 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 
     
-from .models import Student, Subject, Department, School,Level, Staff, Registration, Guardian, Teacher
+from .models import *
 from .serializer import *
 from helper.enum import JobApplicantStatus
 from helper.workers import *
@@ -17,9 +17,13 @@ from rest_framework import viewsets
 from rest_framework.generics import GenericAPIView
 from rest_framework.parsers import MultiPartParser
 from django.contrib.auth.models import Group
+from django.dispatch import receiver
 
 import base64
 import uuid
+import random
+import copy
+import string
 from django.http import HttpResponseBadRequest
 from django.core.exceptions import ValidationError
 
@@ -33,6 +37,15 @@ from django.db.models import Case, CharField, Value, When
 ||=============================================================||
 """
 
+
+@receiver(post_save, sender=Subject)
+def create_student_subjects(sender, instance, created, **kwargs):
+    if created:
+        # Get all students in the class associated with the subject
+        students = instance.cls.students.all()
+        # Create StudentSubjects instances for each student
+        for student in students:
+            StudentSubjects.objects.create(student=student, subject=instance)
 
 class ProgramView(APIView):
     def get(self, request):
@@ -85,7 +98,62 @@ class SchoolFilesView(APIView):
             return Response(serializers.data, status=status.HTTP_200_OK)
         return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
+# SCHOOL TERMS
+
+class TermAPIView(APIView):
+    serializer_class = TermsSerializer
+    def get(self, request):
+        terms = Terms.objects.all()
+        serializer = self.serializer_class(terms, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
+    def post(self, request):
+        school_name = request.data.pop('school', None)
+        if not school_name:
+            return Response({"message": "School name is required in the request body"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            school = School.objects.get(name=school_name)
+        except School.DoesNotExist:
+            return Response({"message": f"School with name '{school_name}' does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.data['school'] = school.id
+
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+    def put(self, request, pk):
+        term = Terms.objects.get(pk=pk)
+        serializer = self.serializer_class(term, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        term = Terms.objects.get(pk=pk)
+        term.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+class ActiveTermView(APIView):
+    def get(self, request):
+        active_term = Terms.get_active_term()
+        if active_term:
+            data = {
+                'term_name': active_term.term_name,
+                'start_date': active_term.start_date,
+                'end_date': active_term.end_date
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'There is no active term.'}, status=status.HTTP_404_NOT_FOUND)
+            
 #DEPARTMENT  
 class DepartementView(APIView):
     serializer_class = DepartmentSerializer
@@ -317,6 +385,7 @@ class ClassItemView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+
 #STAFF INVITE
 class InvitationView(APIView):
     serializer_class = InvitationSerializer
@@ -489,38 +558,6 @@ class ApplicationReaction(APIView):
         application.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-
-
-class SubjectLevelView(APIView):
-    serializer_class = SubjectSerializer
-    def find_class_by_id(self, cls_id):
-        cls = Class.objects.filter(id=cls_id).first()
-        return cls
-    
-    def get_subjects_in_class(self, cls):
-        subjects = Subject.objects.filter(cls=cls)
-        return subjects
-    def get(self, request, cls_id):
-        cls = self.find_class_by_id(cls_id)
-        if not cls:
-            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND) 
-        
-        subjects = self.get_subjects_in_class(cls)
-        serializer = self.serializer_class(subjects, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request, cls_id):
-        cls = self.find_class_by_id(cls_id)
-        if not cls:
-            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = self.serializer_class(data=request.data)  
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-
-
 
 class StaffView(APIView):
     serializer_class = StaffSerializer
@@ -703,14 +740,165 @@ class StaffChangeRole(APIView):
 
 
 
+
+
+class SubjectLevelView(APIView):
+    serializer_class = SubjectSerializer
+    def find_class_by_id(self, cls_id):
+        cls = Class.objects.filter(id=cls_id).first()
+        return cls
+    
+    def get_subjects_in_class(self, cls):
+        subjects = Subject.objects.filter(cls=cls)
+        return subjects
+    
+    def get(self, request, cls_id):
+        cls = self.find_class_by_id(cls_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND) 
+        
+        subjects = self.get_subjects_in_class(cls)
+        serializer = self.serializer_class(subjects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, cls_id):
+        lvl_id = request.data.get('level')
+        instructor_id = request.data.get('instructor')
+
+        cls = self.find_class_by_id(cls_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        instructor = Staff.objects.filter(id=instructor_id).first()
+        level = Level.objects.filter(id=lvl_id).first()
+
+        if not instructor or not level:
+            return Response({"message": "Invalid subject request, please verify instructor or level"}, status=status.HTTP_404_NOT_FOUND)
+        
+        request.data['instructor'] = instructor
+        request.data['level'] = level
+        serializer = self.serializer_class(data=request.data)
+
+        print(instructor.id)
+        if serializer.is_valid():
+            subject = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class SubjectChangeInstructor(APIView):     
+    def get_subject_by_id(self, id):
+        return Subject.objects.filter(id=id).first()
+    
+    def get_staff_by_id(self, id):
+        return Staff.objects.filter(id=id).first()
+    
+    def patch(self, request, subject_id):
+        subject = self.get_subject_by_id(subject_id)
+        if not subject:
+            return Response({"message": "No subject with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        staff_id = request.data.get('instructor')
+        staff = self.get_staff_by_id(staff_id)
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        subject.instructor = staff
+        subject.save()
+        serializer = SubjectSerializer(subject)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
+
 # class GuardianView(APIView):
 
 
 # class RegistrationView(APIView):
 
 
-# class StudentView(APIView):
+class StudentView(APIView):
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticated]
 
+    def generate_random_password(self):
+        return User.objects.make_random_password()
+    
+    def generate_unique_student_email(self, request):
+        prefix = 'student'
+        suffix = ''.join(random.choices(string.digits, k=4))
+        tenant = request.tenant.schema_name
+        return f"{prefix}{suffix}@{tenant}.com"
+    
+    def assign_user_to_group(self, user, role):
+        group = Group.objects.get(name__iexact=role)
+        if group:
+            return group.user_set.add(user)
+
+    def get(self, request):
+        students = Student.objects.all()
+        serializer = self.serializer_class(students, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def create_user_with_role(self, data, role, student_email):
+        generated_password = self.generate_random_password()
+        
+        # Remove unwanted fields from request data
+        data.pop('status', None)
+        data.pop('student_level', None)
+        data.pop('department', None)
+
+        # Add email and password to data
+        data['email'] = student_email
+        data['password'] = generated_password
+
+        user = User.objects.create_user(**data)
+        self.assign_user_to_group(user, role)
+        return user
+    
+    def get_level_by_id(self, id):
+        return Level.objects.filter(id=id).first()
+    
+    def post(self, request):
+        req = copy.deepcopy(request.data)
+
+        student_email = self.generate_unique_student_email(request)
+        user = self.create_user_with_role(req, "student", student_email)
+        
+        level_id = request.data.get('student_level')
+        
+        student_class = self.get_level_by_id(level_id)
+
+        print(level_id, student_class)
+        if not student_class:
+            return Response({"message": "Invalid student level"}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.data.pop('password', None)
+        request.data.pop('username', None)
+        request.data.pop('email', None)
+        request.data.pop('first_name', None)
+        request.data.pop('last_name', None)
+        request.data.pop('gender', None)
+        request.data.pop('student_level', None)
+        request.data['student_class'] = student_class
+
+        student = Student.objects.create(user=user, **request.data)
+        serializer = self.serializer_class(student)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class StudentsInClassView(APIView):
+    serializer_class = StudentSerializer
+    def get_students_in_class(self, cls_id):
+        students = Student.objects.filter(student_class=cls_id)
+        return students
+    
+    def get(self, request, cls_id):
+        students = self.get_students_in_class(cls_id)
+        serializer = self.serializer_class(students, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request, cls_id):
+        pass
 
 class JobApplicantsView(APIView):
     serializer_class = JobSerializer

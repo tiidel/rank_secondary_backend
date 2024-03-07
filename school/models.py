@@ -88,6 +88,38 @@ class School(SchoolBaseModel):
         return self.name
     
  
+class Terms(models.Model):
+    """ --- TERMS OF A SCHOOL ----"""
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    
+    term_name = models.CharField(_("Name of the term e.g first term, second term"), max_length=100, null=False, blank=False)
+    
+    start_date = models.DateField(_("Date term starts"), auto_now_add=True)
+    
+    end_date = models.DateField(_("Date term ends"), auto_now=False, auto_now_add=False)
+
+    exams_per_term = models.IntegerField(_("Number of exams per term"), default=2, null=False, blank=False)
+    
+    @property
+    def is_active(self):
+        today = timezone.now().date()
+        return self.start_date <= today <= self.end_date
+
+    @classmethod
+    def get_active_term(cls):
+        active_terms = cls.objects.filter(start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
+        if active_terms.exists():
+            return active_terms.first()
+        return None
+    class Meta:
+        
+        verbose_name = _("Term")
+        
+        verbose_name_plural = _("Terms")
+        
+    
+    def __str__(self):
+        return self.term_name
  
 class Department(models.Model):
     """
@@ -341,7 +373,19 @@ class Class(models.Model):
     
     h_o_d = models.CharField(max_length=100, null=True, blank=True)
 
+    students = models.ManyToManyField('school.Student', through='StudentClassRelation')
 
+class StudentClassRelation(models.Model):
+    """ --- Describes the relationship between a student and a class ---"""
+    student = models.ForeignKey('school.Student', on_delete=models.CASCADE)
+
+    class_instance = models.ForeignKey(Class, on_delete=models.CASCADE)
+
+    position = models.CharField(max_length=100, null=True, blank=True)
+
+    enrollment_date = models.DateField(null=True, blank=True)
+
+    grade = models.CharField(_("Grade of student"), max_length=10, null=True, blank=True)
 
 class Staff(BaseModel):
     
@@ -405,11 +449,11 @@ class Subject(models.Model):
     
     name = models.CharField(max_length=100, blank=False, null=False)
     
-    department = models.ForeignKey(Level, on_delete=models.CASCADE)
+    level = models.ForeignKey(Level, on_delete=models.CASCADE)
     
     sub_coef = models.IntegerField(_("Value of the subject (coefficient)"), default=1, null=False, blank=False)
     
-    instructor = models.ManyToManyField("school.Teacher", related_name='teacher')
+    instructor = models.ForeignKey("school.Staff", on_delete=models.CASCADE, related_name='staff')
     
     course_duration = models.IntegerField(_("number of hours"), null=True, blank=True)
 
@@ -430,9 +474,11 @@ class Student(models.Model):
     
     status = models.CharField(_("Marital status"), max_length=50, null=False, blank=False)
     
-    student_class = models.ForeignKey(Level, on_delete=models.SET_NULL, null=True )
+    student_class = models.ForeignKey(Level, on_delete=models.CASCADE)
     
     bio = models.CharField(max_length=3000, null=False, blank=True)
+
+    subject_terms = models.ManyToManyField(Terms, verbose_name=_("name"))
     
     adm_status = models.BooleanField(default=True)
     
@@ -448,6 +494,7 @@ class Student(models.Model):
     
     is_new_student = models.BooleanField(_("Is this a transfer or new student in this school"), default=True)
 
+
     class Meta:
         
         verbose_name = _("Student")
@@ -457,7 +504,44 @@ class Student(models.Model):
     def __str__(self):
         return f" {self.user.first_name} {self.user.last_name}"
     
+    def save(self, *args, **kwargs):
+        created = not self.pk  
+        super().save(*args, **kwargs)
+        
+        if created or 'student_class_id' in kwargs.get('update_fields', []):
+            subjects = self.student_class.subjects.all()
 
+            for subject in subjects:
+                StudentSubjects.objects.create(student=self, subject=subject)
+    
+
+class StudentSubjects(models.Model):
+    """ --- subjects that a student is enrolled in with sequence grades --- """
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+
+    first_seq = models.IntegerField(_("First sequence grade"), default=0, null=True, blank=True)
+
+    second_seq = models.IntegerField(_("Second sequence grade"), default=0, null=True, blank=True)
+
+    seq_average = models.FloatField(_("Average of sequence grades"), default=0, null=True, blank=True)
+    
+    class Meta:
+        
+        verbose_name = _("Student Subject")
+        
+        verbose_name_plural = _("Student Subjects")
+        
+    def __str__(self):
+        return f" {self.student.user.first_name} {self.student.user.last_name} - {self.subject.name}"
+    
+    def save(self, *args, **kwargs):
+        if self.first_seq is not None and self.second_seq is not None:
+            self.seq_average = (self.first_seq + self.second_seq) / 2.0
+        else:
+            self.seq_average = None
+        super().save(*args, **kwargs)
 
 class Registration(BaseModel):
     
