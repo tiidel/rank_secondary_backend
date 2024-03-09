@@ -11,6 +11,7 @@ from core.utils import Util
 from helper.workers import send_email_with_template
 from .serializers import RegisterSerializer, LoginSerializer, ResetPasswordSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rank.settings import FRONTEND_DOMAIN
 
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -55,13 +56,15 @@ class RegisterAPIView(GenericAPIView):
 
     def sendRegisterEmail(self, user, request, token):
 
-        current_site = get_current_site(
-            request = request
-            ).domain
+        # current_site = get_current_site(
+        #     request = request
+        #     ).domain
                 
 
-        relativeLink = reverse('verify-email')
-        absurl = 'http://'+current_site+relativeLink + "?token=" + str(token)
+        # relativeLink = reverse('verify-email')
+
+        absurl = FRONTEND_DOMAIN + "?token=" + str(token)
+
         data = {
             'email_subject': 'Account created successfully',
         }
@@ -173,13 +176,18 @@ class RequestPasswordReset(GenericAPIView):
         
         except Exception as indentifier:
             print(indentifier)
+            
         return Response({"success": "we have sent you a link to reset your password"}, status=status.HTTP_200_OK)
 
 
 class PasswordTokenCheck(GenericAPIView):
+
     def get(self, request, uidb64, token):
+
         data = request.data
         print(data)
+
+        return Response({"success": "we have sent you a link to reset your password"}, status=status.HTTP_200_OK)
 
 
 class UpdateUserInformation(GenericAPIView):

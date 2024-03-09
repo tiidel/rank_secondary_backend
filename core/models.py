@@ -17,6 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.contrib.auth.models import Group
 from django.db import migrations
+from django.utils.text import slugify
 
 
 from datetime import datetime, timedelta
@@ -45,18 +46,34 @@ class customUserManager(UserManager):
         user.save(using=self._db)
         return user
 
-    def create_user(self, username, email, password=None, **extra_fields):
+
+
+    def create_user(self, email, username=None, password=None, **extra_fields):
+        
+        if not username:
+
+            if "first_name" in extra_fields and "last_name" in extra_fields:
+                username = self.generate_username(extra_fields["first_name"], extra_fields["last_name"])
+
+            else:
+                raise ValueError("Username cannot be generated without first name and last name")
+
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)
+
         return self._create_user(username, email, password, **extra_fields)
 
+
+
     def create_superuser(self, username, email,  password=None, **extra_fields):
+       
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
+        
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
 
@@ -64,6 +81,21 @@ class customUserManager(UserManager):
 
 
 
+
+    def generate_username(self, first_name, last_name):
+        """
+        Generate a username based on the first name and last name.
+        """
+       
+        base_username = self.model.normalize_username(first_name + last_name)
+        username = base_username
+        counter = 1
+       
+        while self.model.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        
+        return username
 
 
 class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
@@ -79,9 +111,9 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
     username = models.CharField(
         _("username"),
         max_length=150,
-        unique=True,
+        blank=True,
         help_text=_(
-            "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
+            "Optional. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
         ),
         validators=[username_validator],
         error_messages={
@@ -145,9 +177,25 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
 
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username", "first_name", "last_name"]
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = customUserManager()
+
+    def save(self, *args, **kwargs):
+       
+        if not self.username:
+
+            base_username = slugify(self.first_name + self.last_name)
+            username = base_username
+            counter = 1
+
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}_{counter}"
+                counter += 1
+        
+            self.username = username
+        super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")

@@ -11,7 +11,6 @@ from django.core.mail import EmailMessage
 def connection_test(arg1, arg2):
     # Do something asynchronously
     result = arg1 + arg2
-    print(result)
     return result
 
 
@@ -35,7 +34,6 @@ def send_email_with_template(data: dict, template_name: str, context: dict, reci
         )
         email.content_subtype = "html" 
         email.send()
-        print("Your email: ", email)
 
     except Exception as e:
         print(e)
