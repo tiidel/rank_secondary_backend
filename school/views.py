@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import *
 from .serializer import *
 from helper.enum import JobApplicantStatus
+from django.db.models import Q
 from helper.workers import *
 from core.models import User
 from core.serializers import LoginSerializer
@@ -18,6 +19,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.parsers import MultiPartParser
 from django.contrib.auth.models import Group
 from django.dispatch import receiver
+from datetime import datetime
 
 import base64
 import uuid
@@ -41,11 +43,13 @@ from django.db.models import Case, CharField, Value, When
 @receiver(post_save, sender=Subject)
 def create_student_subjects(sender, instance, created, **kwargs):
     if created:
-        # Get all students in the class associated with the subject
         students = instance.cls.students.all()
-        # Create StudentSubjects instances for each student
+
+        terms = Terms.objects.all()
+
         for student in students:
-            StudentSubjects.objects.create(student=student, subject=instance)
+            for term in terms:
+                StudentSubjects.objects.create(student=student, subject=instance, terms=term)
 
 class ProgramView(APIView):
     def get(self, request):
@@ -100,32 +104,71 @@ class SchoolFilesView(APIView):
     
 
 # SCHOOL TERMS
-
 class TermAPIView(APIView):
     serializer_class = TermsSerializer
+
     def get(self, request):
         terms = Terms.objects.all()
         serializer = self.serializer_class(terms, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        active_term = Terms.get_active_term()
+        active_term_data = None
+        if active_term:
+            active_term_serializer = self.serializer_class(active_term)
+            active_term_data = active_term_serializer.data
+
+        response_data = {
+            "terms": serializer.data,
+            "active_term": active_term_data
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
     
     def post(self, request):
-        school_name = request.data.pop('school', None)
-        if not school_name:
-            return Response({"message": "School name is required in the request body"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            school = School.objects.get(name=school_name)
-        except School.DoesNotExist:
-            return Response({"message": f"School with name '{school_name}' does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        terms_data = request.data
+        created_terms = []
+        errors = []
 
-        request.data['school'] = school.id
+        for term_data in terms_data:
+            start_date = term_data.get('start_date')
+            end_date = term_data.get('end_date')
 
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+            # Check if the new term overlaps with existing terms
+            overlapping_terms = Terms.objects.filter(
+                Q(start_date__range=[start_date, end_date]) |
+                Q(end_date__range=[start_date, end_date]) |
+                Q(start_date__lte=start_date, end_date__gte=end_date)
+            )
+
+            if overlapping_terms.exists():
+                errors.append({"message": "Term overlaps with existing term"})
+                continue
+
+            school_name = term_data.pop('school', None)
+            if not school_name:
+                errors.append({"message": "School name is required"})
+                continue
+            
+            try:
+                school = School.objects.get(id=school_name)
+            except School.DoesNotExist:
+                errors.append({"message": f"School with ID '{school_name}' does not exist"})
+                continue
+
+            term_data['school'] = school.id
+            serializer = self.serializer_class(data=term_data)
+            if serializer.is_valid():
+                term = serializer.save()
+                created_terms.append(serializer.data)
+            else:
+                errors.append(serializer.errors)
+
+        if errors:
+            return Response({"errors": errors, "created_terms": created_terms}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(created_terms, status=status.HTTP_201_CREATED)
+
+
 
     def put(self, request, pk):
         term = Terms.objects.get(pk=pk)
@@ -169,6 +212,7 @@ class DepartementView(APIView):
             serializers.save()
             return Response(serializers.data, status=status.HTTP_201_CREATED)
         return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class DepartmentItemView(APIView):
     serializer_class = DepartmentSerializer
@@ -289,15 +333,29 @@ class ClassView(APIView):
     serializer_class = ClassSerializer
     permission_classes = [IsAuthenticated]
 
+    def find_level_by_id(self, id):
+        return Level.objects.filter(id=id).first()
+    
     def get(self, request):
         classes = Class.objects.all()
-        serializers = self.serializer_class(classes, many=True)
+        serializers = ClassFetchSerializer(classes, many=True)
         return Response(serializers.data, status=status.HTTP_200_OK)
 
+
     def post(self, request):
+
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of class data"}, status=status.HTTP_400_BAD_REQUEST)
+        
         serializers = []
         for class_data in request.data:
+            level = class_data.get('level') 
+            level_id = self.find_level_by_id(level)
+            if not level_id:
+                return Response({"message": "Invalid level"}, status=status.HTTP_400_BAD_REQUEST)
+            
             serializer = self.serializer_class(data=class_data)
+
             if serializer.is_valid():
                 serializer.save()
                 serializers.append(serializer)
@@ -305,7 +363,7 @@ class ClassView(APIView):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
-    
+
 
 class ClassInstructor(APIView):
     serializer_class = ClassSerializer
@@ -740,8 +798,6 @@ class StaffChangeRole(APIView):
 
 
 
-
-
 class SubjectLevelView(APIView):
     serializer_class = SubjectSerializer
     def find_class_by_id(self, cls_id):
@@ -773,13 +829,13 @@ class SubjectLevelView(APIView):
         level = Level.objects.filter(id=lvl_id).first()
 
         if not instructor or not level:
-            return Response({"message": "Invalid subject request, please verify instructor or level"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message": "Invalid subject request, please verify instructor or level"}, status=status.HTTP_403_FORBIDDEN)
         
         request.data['instructor'] = instructor
         request.data['level'] = level
+        request.data['cls'] = cls_id
         serializer = self.serializer_class(data=request.data)
 
-        print(instructor.id)
         if serializer.is_valid():
             subject = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -843,7 +899,7 @@ class StudentView(APIView):
         
         # Remove unwanted fields from request data
         data.pop('status', None)
-        data.pop('student_level', None)
+        data.pop('student_class', None)
         data.pop('department', None)
 
         # Add email and password to data
@@ -854,8 +910,8 @@ class StudentView(APIView):
         self.assign_user_to_group(user, role)
         return user
     
-    def get_level_by_id(self, id):
-        return Level.objects.filter(id=id).first()
+    def get_class_by_id(self, id):
+        return Class.objects.filter(id=id).first()
     
     def post(self, request):
         req = copy.deepcopy(request.data)
@@ -863,11 +919,10 @@ class StudentView(APIView):
         student_email = self.generate_unique_student_email(request)
         user = self.create_user_with_role(req, "student", student_email)
         
-        level_id = request.data.get('student_level')
+        cls_id = request.data.get('student_class')
         
-        student_class = self.get_level_by_id(level_id)
+        student_class = self.get_class_by_id(cls_id)
 
-        print(level_id, student_class)
         if not student_class:
             return Response({"message": "Invalid student level"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -899,6 +954,143 @@ class StudentsInClassView(APIView):
     
     def post(self, request, cls_id):
         pass
+
+
+# TEACHER GRADE API
+class GradeStudentView(APIView):
+    """ ----- GRADE ALL STUDENTS FOR A PARTCULAR COURSE ----- """
+
+    serializer_class = StudentSubjectSerializer
+
+    def get(self, request, subj_id):
+        subject_subjects = StudentSubjects.objects.filter(subject=subj_id)
+        
+        serializer = self.serializer_class(subject_subjects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+  
+    def post(self, request, subj_id):
+        marks_data = request.data
+        updated_grades = {}
+        invalid_students = []
+
+        subject = Subject.objects.filter(id=subj_id).first()
+        if not subject:
+            return Response({"message": "Invalid subject"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        active_term = Terms.get_active_term()
+        if not active_term:
+            return Response({"message": "No active term found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        for data in marks_data:
+            student_id = data.get('student')
+            try:
+                student_grade = StudentSubjects.objects.get(subject=subj_id, student=student_id, terms=active_term.id)
+                serializer = self.serializer_class(instance=student_grade, data=data, partial=True)
+                
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_grades[student_id] = serializer.data
+                
+                else:
+                    invalid_students.append({"student": student_id, "errors": serializer.errors})
+            
+            except StudentSubjects.DoesNotExist:
+                invalid_students.append({"student": student_id, "message": f"Student {student_id} not found for the given subject in the active term"})
+
+        if invalid_students:
+            return Response({"invalid_students": invalid_students, "graded": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
+       
+        else:
+            return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
+
+# GRADE API
+class GradeStudentForSubjectAPIView(APIView):
+    """--- GRADE STUDENTS FOR A PARTICULAR TERM ---"""
+
+    def post(self, request, term, subject):
+        term = Terms.objects.filter(id=term).first()
+
+        # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
+        if not term.term_validated and datetime.now().date() < term.end_date:
+            return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
+        
+        subject = Subject.objects.filter(id=subject).first()
+        if not term or not subject:
+            return Response({"message": "Invalid term or subject"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        marks_data = request.data
+        updated_grades = {}
+        invalid_students = []
+
+        for data in marks_data:
+            student_id = data.get('student')
+            try:
+                student_grade = StudentSubjects.objects.get(subject=subject, student=student_id, terms=term)
+                serializer = StudentSubjectSerializer(instance=student_grade, data=data, partial=True)
+                
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_grades[student_id] = serializer.data
+                
+                else:
+                    invalid_students.append({"student": student_id, "errors": serializer.errors})
+            
+            except StudentSubjects.DoesNotExist:
+                invalid_students.append({"student": student_id, "message": f"Student {student_id} not found for the given subject in the active term"})
+
+        if invalid_students:
+            return Response({"invalid_students": invalid_students, "graded": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
+       
+        else:
+            return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
+
+
+class GradeStudentForAllSubjectAPIView(APIView):
+    """ --- GRADE STUDENT FOR ALL SUBJECTS IN A PARTICULAR TERM --- """
+    
+    serializer_class = StudentSubjectSerializer
+
+    def get(self, request, term_id, student_id):
+        student_marks = StudentSubjects.objects.filter(terms=term_id, student=student_id)
+        serializer = self.serializer_class(student_marks, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    def post(self, request, term_id, student_id):
+        term = Terms.objects.filter(id=term_id).first()
+
+        # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
+        if not term.term_validated and datetime.now().date() < term.end_date:
+            return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
+        
+        marks_data = request.data
+        updated_grades = {}
+        invalid_subjects = []
+
+        for data in marks_data:
+            subject_id = data.get('subject')
+
+            try:
+                student_grade = StudentSubjects.objects.get(terms=term_id, student=student_id, subject=subject_id)
+                serializer = self.serializer_class(instance=student_grade, data=data, partial=True)
+
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_grades[subject_id] = serializer.data
+
+                else:
+                    invalid_subjects.append({"subject": subject_id, "errors": serializer.errors})
+
+            except StudentSubjects.DoesNotExist:
+                invalid_subjects.append({"subject": subject_id, "message": f"Student {student_id} not found for the given subject and term"})
+
+        if invalid_subjects:
+            return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
+        
+        else:
+            return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
+        
 
 class JobApplicantsView(APIView):
     serializer_class = JobSerializer

@@ -99,6 +99,8 @@ class Terms(models.Model):
     end_date = models.DateField(_("Date term ends"), auto_now=False, auto_now_add=False)
 
     exams_per_term = models.IntegerField(_("Number of exams per term"), default=2, null=False, blank=False)
+
+    term_validated = models.BooleanField(_("If the term has been validated"), default=False)
     
     @property
     def is_active(self):
@@ -120,6 +122,11 @@ class Terms(models.Model):
     
     def __str__(self):
         return self.term_name
+    
+    def save(self, *args, **kwargs):
+        if self.end_date < timezone.now().date():
+            self.term_validated = True
+        super().save(*args, **kwargs)
  
 class Department(models.Model):
     """
@@ -341,7 +348,6 @@ class PaymentDetail(models.Model):
     mtn_momo = models.CharField(_("Mobile money number"), blank=True, null=True, max_length=20)
     
 
-
 class Social(models.Model):
     
     facebook = models.CharField(_("facebook profile link"),  default="https://fb.com/tiidel", max_length=150)
@@ -360,20 +366,22 @@ class Class(models.Model):
     Description: Describes the class where student belongs
     Author: kimbidarl@gmail.com
     """
-    
+    level = models.ForeignKey('school.Level', on_delete=models.CASCADE, null=True)
+
     class_name = models.CharField(_("e.g form one or lower sixth"), max_length=100)
-    
-    level = models.ForeignKey(Level, on_delete=models.CASCADE)
     
     enrolment = models.IntegerField(default=0)
     
     class_range = models.CharField(_("Approximate number of students in class"), max_length=50)
     
-    instructor = models.ForeignKey("school.Staff", on_delete=models.CASCADE, null=True)
+    instructor = models.ForeignKey("school.Staff", on_delete=models.CASCADE, null=True, blank=True)
     
     h_o_d = models.CharField(max_length=100, null=True, blank=True)
 
     students = models.ManyToManyField('school.Student', through='StudentClassRelation')
+
+    subjects = models.ManyToManyField('Subject', related_name='classes')
+
 
 class StudentClassRelation(models.Model):
     """ --- Describes the relationship between a student and a class ---"""
@@ -386,6 +394,7 @@ class StudentClassRelation(models.Model):
     enrollment_date = models.DateField(null=True, blank=True)
 
     grade = models.CharField(_("Grade of student"), max_length=10, null=True, blank=True)
+
 
 class Staff(BaseModel):
     
@@ -444,10 +453,11 @@ class Teacher(models.Model):
 
 
 
-
 class Subject(models.Model):
     
     name = models.CharField(max_length=100, blank=False, null=False)
+    
+    cls = models.ForeignKey(Class, on_delete=models.CASCADE)
     
     level = models.ForeignKey(Level, on_delete=models.CASCADE)
     
@@ -457,7 +467,6 @@ class Subject(models.Model):
     
     course_duration = models.IntegerField(_("number of hours"), null=True, blank=True)
 
-    cls = models.ForeignKey(Class, on_delete=models.CASCADE, null=True)
 
     class Meta:
         verbose_name = _("Subject")
@@ -465,7 +474,11 @@ class Subject(models.Model):
         
     def __str__(self):
         return self.name
-
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        
+        self.cls.subjects.add(self)
 
 
 class Student(models.Model):
@@ -474,16 +487,14 @@ class Student(models.Model):
     
     status = models.CharField(_("Marital status"), max_length=50, null=False, blank=False)
     
-    student_class = models.ForeignKey(Level, on_delete=models.CASCADE)
+    student_class = models.ForeignKey(Class, on_delete=models.CASCADE)
     
     bio = models.CharField(max_length=3000, null=False, blank=True)
-
-    subject_terms = models.ManyToManyField(Terms, verbose_name=_("name"))
     
     adm_status = models.BooleanField(default=True)
     
     department = models.CharField(max_length=256, null=False, blank=False)
-    
+
     guardians = models.ForeignKey('Guardian', on_delete=models.SET_NULL, null=True, related_name="student_guardians")
     
     admission_date = models.DateField(_("Date person was admitted as a student"), auto_now_add=True)
@@ -508,11 +519,14 @@ class Student(models.Model):
         created = not self.pk  
         super().save(*args, **kwargs)
         
-        if created or 'student_class_id' in kwargs.get('update_fields', []):
-            subjects = self.student_class.subjects.all()
+        if created or 'student_class' in kwargs.get('update_fields', []):
+            class_instance = self.student_class
+
+            subjects = class_instance.subjects.all()
 
             for subject in subjects:
-                StudentSubjects.objects.create(student=self, subject=subject)
+                ssr = StudentSubjects.objects.create(student=self, subject=subject)
+            StudentClassRelation.objects.create(student=self, class_instance=self.student_class)
     
 
 class StudentSubjects(models.Model):
@@ -524,6 +538,8 @@ class StudentSubjects(models.Model):
     first_seq = models.IntegerField(_("First sequence grade"), default=0, null=True, blank=True)
 
     second_seq = models.IntegerField(_("Second sequence grade"), default=0, null=True, blank=True)
+
+    terms = models.ForeignKey(Terms, on_delete=models.CASCADE, null=True, blank=True)
 
     seq_average = models.FloatField(_("Average of sequence grades"), default=0, null=True, blank=True)
     
@@ -537,11 +553,13 @@ class StudentSubjects(models.Model):
         return f" {self.student.user.first_name} {self.student.user.last_name} - {self.subject.name}"
     
     def save(self, *args, **kwargs):
+        """ --- Calculate the average of the sequence grades ---"""
         if self.first_seq is not None and self.second_seq is not None:
             self.seq_average = (self.first_seq + self.second_seq) / 2.0
         else:
             self.seq_average = None
         super().save(*args, **kwargs)
+
 
 class Registration(BaseModel):
     

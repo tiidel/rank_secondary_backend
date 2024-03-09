@@ -11,7 +11,7 @@ urlpatterns = [
 
     #TERMS
     path('terms/', TermAPIView.as_view(), name="terms"),
-    path('terms/<int:pk>/', TermAPIView.as_view(), name='term_detail'),
+    path('terms/<int:id>/', TermAPIView.as_view(), name='term_detail'),
     path('active-term/', ActiveTermView.as_view(), name='active_term'),
     
     # DEPARTMENT
@@ -49,9 +49,17 @@ urlpatterns = [
     
     # SUBJECTS
     path('subjects/<str:cls_id>/', SubjectLevelView.as_view(), name='school_subjects'),
+    path('subjects/grade/<str:subj_id>/', GradeStudentView.as_view(), name='grade_student'),
+    
+    # GRADES
+    path('grades/<str:term>/<str:subject>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
+    path('grades/student/<str:term_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
     #STUDENTS
     path('students/', StudentView.as_view(), name='students'),
     path('students/<str:cls_id>/', StudentsInClassView.as_view(), name='students'),
+    path('students/<str:stud_id>/', StudentsInClassView.as_view(), name='students'),
+    path('students/<str:stud_id>/profile/', StudentsInClassView.as_view(), name='students'),
+    path('students/<str:stud_id>/performance/', StudentsInClassView.as_view(), name='students'),
     
 ]

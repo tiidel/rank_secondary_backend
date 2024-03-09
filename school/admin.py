@@ -12,6 +12,8 @@ models = [
     Guardian,
     Student,
     Staff,
+    Class,
+    StudentClassRelation
 ]
 
 admin.site.register( models )
