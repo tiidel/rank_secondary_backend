@@ -5,7 +5,7 @@ WORKDIR /rank
 ENV PYTHONUNBUFFERED=1
 RUN apk update && apk add postgresql-client
 
-RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev
+RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev redis
 
 RUN pip install --upgrade pip setuptools
 
@@ -14,6 +14,6 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
+EXPOSE 6379
 
 CMD ["python", "run.py", "runserver", "0.0.0.0:8000"]

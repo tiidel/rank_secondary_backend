@@ -1,9 +1,23 @@
-version: '3.8'
+version: '3.3'
 
 services:
   # REDIS
   redis:
     image: "redis:7.0.11-alpine"
+    container_name: "redis"
+    ports:
+      - '6378:6379'
+
+  # CELERY WORKER
+  celery_worker:
+    build: .
+    command: celery -A rank worker --loglevel=INFO
+    depends_on:
+      - redis
+    environment:
+      - DEBUG=1
+    volumes:
+      - .:/code
 
   # DATABASE
   postgres:

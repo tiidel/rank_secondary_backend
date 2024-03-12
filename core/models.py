@@ -65,8 +65,15 @@ class customUserManager(UserManager):
 
 
 
-    def create_superuser(self, username, email,  password=None, **extra_fields):
-       
+    def create_superuser(self, email, username=None,  password=None, **extra_fields):
+        
+        if not username:
+            if "first_name" in extra_fields and "last_name" in extra_fields:
+                username = self.generate_username(extra_fields["first_name"], extra_fields["last_name"])
+
+            else:
+                raise ValueError("Username cannot be generated without first name and last name")
+            
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
