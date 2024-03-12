@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # REDIS
+  redis:
+    image: "redis:7.0.11-alpine"
+
+  # DATABASE
+  postgres:
+    image: "postgres:14-alpine"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=rank
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=prodigy
+    ports:
+      - "5433:5432"
+      
+  # WEB SERVICE
+  web:
+    build: .
+    command: ["python", "run.py", "runserver", "0.0.0.0:8001"]
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8000:8001"
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=3ertyu8ifndasou9fijnfodl
+      - DATABASE_URL=postgres://postgres:prodigy@postgres:5432/rankd
+    volumes:
+      - .:/code
+
+volumes:
+  postgres_data:
