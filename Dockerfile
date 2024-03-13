@@ -9,8 +9,11 @@ RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev redis
 
 RUN pip install --upgrade pip setuptools
 
+
+# INSTALLING DEPENDENCIES
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
+
 
 COPY . .
 

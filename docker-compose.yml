@@ -5,6 +5,8 @@ services:
   redis:
     image: "redis:7.0.11-alpine"
     container_name: "redis"
+    command: redis-server --save 20 1 --loglevel warning
+    privileged: true
     ports:
       - '6378:6379'
 
@@ -15,12 +17,12 @@ services:
     depends_on:
       - redis
     environment:
-      - DEBUG=1
+      - CELERY_URL=redis://redis:6379/0
     volumes:
       - .:/code
 
   # DATABASE
-  postgres:
+  db:
     image: "postgres:14-alpine"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -36,16 +38,18 @@ services:
     build: .
     command: ["python", "run.py", "runserver", "0.0.0.0:8001"]
     depends_on:
-      - postgres
+      - db
       - redis
     ports:
       - "8000:8001"
     environment:
       - DEBUG=1
-      - SECRET_KEY=3ertyu8ifndasou9fijnfodl
-      - DATABASE_URL=postgres://postgres:prodigy@postgres:5432/rankd
     volumes:
       - .:/code
 
+    env_file:
+      - .env.serve
+
 volumes:
   postgres_data:
+
