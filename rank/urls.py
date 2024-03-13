@@ -9,8 +9,9 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.conf import settings
 from django.conf.urls.static import static
 
-from .views import FireConnect, index, not_found, create_tenant_view, tenant_exist_view
+from .views import *
 
+from fcm_django.api.rest_framework import FCMDeviceAuthorizedViewSet, FCMDeviceViewSet
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -29,7 +30,6 @@ schema_view = get_schema_view(
 handler404 = not_found
 
 urlpatterns = [
-   #  path('firebase/', FireConnect.as_view(), name='firebase'),
     path('api/v1/create-tenant/', create_tenant_view, name='TENANT_VIEW'),
     path('api/v1/tenant-exist/', tenant_exist_view, name='TENANT_VIEW'),
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
@@ -38,6 +38,14 @@ urlpatterns = [
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('', index, name='index'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+
+   #FIREBASE ROUTES
+   path('api/v1/devices/register/', FCMDeviceAuthorizedViewSet.as_view({'post': 'create'}), name='create_fcm_device'),
+   path('api/v1/devices/', FCMDeviceViewSet.as_view({'get': 'list'}), name='list_fcm_device'),
+
+   # ANOUNCEMENT
+   path('api/v1/notify-all/', send_notification, name='general_anouncement'),
+
 ]
 urlpatterns += staticfiles_urlpatterns()
 urlpatterns += static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)

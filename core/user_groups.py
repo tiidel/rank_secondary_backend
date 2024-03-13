@@ -9,7 +9,6 @@ GROUP_ACCOUNTANT = 'Accountant'
 GROUP_SECRETARY = 'Secretary'
 GROUP_STUDENT = 'Student'
 GROUP_GUARDIAN = 'Guardian'
-GROUP_PARENT = 'Parent'
 GROUP_GENERAL = 'Staff'
 
 def create_groups():
@@ -18,7 +17,6 @@ def create_groups():
     secretary_group, _ = Group.objects.get_or_create(name=GROUP_SECRETARY)
     student_group, _ = Group.objects.get_or_create(name=GROUP_STUDENT)
     guardian_group, _ = Group.objects.get_or_create(name=GROUP_GUARDIAN)
-    parent_group, _ = Group.objects.get_or_create(name=GROUP_PARENT)
     general_group, _ = Group.objects.get_or_create(name=GROUP_GENERAL)
 
     # Assign permissions to groups
@@ -56,12 +54,6 @@ def create_groups():
         # Add permissions for the guardian group as needed
     ]
     guardian_group.permissions.set(guardian_permissions)
-
-    # Parent group permissions
-    parent_permissions = [
-        # Add permissions for the parent group as needed
-    ]
-    parent_group.permissions.set(parent_permissions)
 
     # General group permissions
     general_permissions = [

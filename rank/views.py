@@ -2,7 +2,6 @@
 from django.shortcuts import render
 from rest_framework.views import Response, status
 from rest_framework.views import APIView
-import pyrebase
 from rest_framework.decorators import api_view, permission_classes
 from tenant.models import Client, Domain
 from rest_framework.permissions import IsAuthenticated
@@ -10,10 +9,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ObjectDoesNotExist
 import random
 import string
-
+from fcm_django.models import FCMDevice
 
 from core.serializers import LoginSerializer
 from core.user_groups import create_groups
+from firebase_admin.messaging import Message
+
 
 
 def index(request):
@@ -23,22 +24,7 @@ def not_found(request, exception):
     return render(request, 'not_found.html')
 
 
-config={
-    "apiKey": "AIzaSyAXhQ7QEcb6PctU4FPCe34jzYIf-TtkGTw",
-    "authDomain": "ranksecondary.firebaseapp.com",
-    "databaseURL": "https://ranksecondary-default-rtdb.firebaseio.com",
-    "projectId": "ranksecondary",
-    "storageBucket": "ranksecondary.appspot.com",
-    "messagingSenderId": "15848541862",
-    "appId": "1:15848541862:web:553d46ae739e01884fae67",
-    "measurementId": "G-2PRC9RLYBL"
-}
-
-firebase=pyrebase.initialize_app(config)
-authe = firebase.auth()
-database=firebase.database()
-
-
+# CREATE TENANT VIEW
 @api_view(['POST', 'GET'])
 @permission_classes([IsAuthenticated])
 def create_tenant_view(request):
@@ -86,6 +72,7 @@ def create_tenant_view(request):
     return Response({"message": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+# TENANT EXIST VIEW
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def tenant_exist_view(request):
@@ -134,12 +121,46 @@ def generate_unique_tenant_names(original_name):
     return unique_names
         
 
-class FireConnect(APIView):
-    def get(self, request):
-        day = database.child('Data').child('Day').get().val()
-        print(day)
-        # id = database.child('Data').child('Id').get().val()
-        # projectname = database.child('Data').child('Projectname').get().val()
-        # return render(request,"Home.html",{"day":day,"id":id,"projectname":projectname })
-        return Response( "hello world", status=status.HTTP_200_OK )
+
+
+
+# @api_view(['POST'])
+# def send_notification(request):
+#     data = request.data
     
+#     if 'message' not in data:
+#         return Response({'error': 'Message is required'}, status=400)
+    
+#     # Retrieve all registered devices
+#     devices = FCMDevice.objects.all()
+    
+ 
+#     for device in devices:
+#         msg = device.send_message(Message(data['message'], topic="SOME TOPIC"))
+#         print(device, msg)
+    
+
+#     return Response({'success': 'Notification sent successfully'})
+
+
+@api_view(['POST'])
+def send_notification(request):
+    data = request.data
+    
+    # Retrieve all registered devices
+    devices = FCMDevice.objects.all()
+    
+    # Send message without specifying a topic
+    response = devices.send_message(
+        Message(
+            data={
+                "Nick" : "Mario",
+                "body" : "great match!",
+                "Room" : "PortugalVSDenmark"
+            }
+        )
+    )
+
+    print(response)
+    
+    return Response({'success': 'Notification sent successfully'})

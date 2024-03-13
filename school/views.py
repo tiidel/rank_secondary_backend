@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
     
 from .models import *
 from .serializer import *
+from core.permissions import *
 from helper.enum import JobApplicantStatus
 from django.db.models import Q
 from helper.workers import *

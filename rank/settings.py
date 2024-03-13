@@ -2,6 +2,9 @@ from pathlib import Path
 from decouple import config
 import os
 import dj_database_url
+
+from firebase_admin import initialize_app, credentials
+
 from datetime import timedelta
 from helper.helper import *
 
@@ -16,6 +19,14 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG')
 
+
+FCM_DJANGO_SETTINGS = {
+    "FCM_SERVER_KEY": config('FIREBASE_SERVER_KEY'),
+    "DEFAULT_FIREBASE_APP": None,
+    "ONE_DEVICE_PER_USER": False,
+    "DELETE_INACTIVE_DEVICES": False,
+    "PROJECT_ID": "rank-7ec5b",
+}
 
 ALLOWED_HOSTS = ['*', CLIENT_URL, CLIENT_URL_WILDCARD]
 
@@ -41,7 +52,8 @@ SHARED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'django_extensions',
-    'celery'
+    'celery',
+    'fcm_django'
 ]
 
 
@@ -206,3 +218,10 @@ TENANT_MODEL = "tenant.Client"
 TENANT_DOMAIN_MODEL = "tenant.Domain"
 
 PUBLIC_SCHEMA_URLCONF = 'rank.urls'
+
+
+
+
+#FIREBASE CONFIGURATION
+cred = credentials.Certificate(os.path.join(BASE_DIR, 'credentials.json'))
+FIREBASE_APP = initialize_app(cred)
