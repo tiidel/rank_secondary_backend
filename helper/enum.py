@@ -99,3 +99,17 @@ class JobApplicantStatus(models.TextChoices):
     Unqualified: Any = 'unqualified', 'Unqualified'
     
 
+
+# ============= COMMERCE ================
+
+class SchoomMaterialCategory(models.TextChoices):
+    """ --- Simple list of accepted Categories --- """
+
+    Book: Any = 'book', 'Book'
+
+    Merchandise: Any = 'merchandise', 'Merchandise'
+    
+    PastQuestion: Any = 'past question', 'PastQuestion'
+    
+    Tutorial: Any = 'tutorial', 'Tutorial'
+

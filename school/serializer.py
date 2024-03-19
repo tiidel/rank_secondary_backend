@@ -1,11 +1,7 @@
 from rest_framework import serializers
-from .models import Student, Subject, Department, School, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects
+from .models import Student, Subject, Department, School, PaymentDetail, Social, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects, Event
 from core.serializers import LoginSerializer
 
-class ProgramSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Program
-        fields = '__all__'
 
 class StaffSerializer(serializers.ModelSerializer):
     user = LoginSerializer()
@@ -17,7 +13,30 @@ class SchoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
         fields = '__all__'
+
+class PaymentDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentDetail
+        fields = '__all__'
+
+
+class SocialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Social
+        fields = '__all__'
+ 
+class ProgramSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Program
+        fields = '__all__'
         
+ 
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = '__all__'
+        
+               
 class TermsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Terms

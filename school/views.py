@@ -52,11 +52,130 @@ def create_student_subjects(sender, instance, created, **kwargs):
             for term in terms:
                 StudentSubjects.objects.create(student=student, subject=instance, terms=term)
 
+
+
 class ProgramView(APIView):
+    serializer_class = ProgramSerializer
+
     def get(self, request):
-    # queryset = ProgramSerializer.objects.all()
-    # serializer_class = ProgramSerializer
-        Response("program", status=status.HTTP_200_OK)
+        programs = Program.objects.filter(is_deleted=False)
+        serializer = self.serializer_class(programs, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    def post(self, request):
+
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+
+
+class ProgramItemView(APIView):
+    serializer_class = ProgramSerializer
+    def find_program_by_id(self, id):
+        return Program.objects.filter(id=id, is_deleted = False).first()
+    
+    def get(self, request, id):
+        program = self.find_program_by_id(id)
+        serializer = self.serializer_class(program)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def delete(self, request, id):
+        program = self.find_program_by_id(id)
+
+        if not program:
+            return Response({"message": f"program with id {id} was not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if program.is_deleted:
+            return Response({"message": f"Level with id {id} was already deleted"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+       
+        program.is_deleted = True
+        program.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def patch(self, request, id):
+        program = self.find_program_by_id(id)
+        serializer = self.serializer_class(program, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, id):
+        program = self.find_program_by_id(id)
+        serializer = self.serializer_class(program, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class SocialViewSet(viewsets.ModelViewSet):
+    queryset = Social.objects.all()
+    serializer_class = SocialSerializer
+
+class PaymentDetailViewset(viewsets.ModelViewSet):
+    queryset = PaymentDetail.objects.all()
+    serializer_class = PaymentDetailSerializer
+    
+class SchoolEventAPIView(APIView):
+    serializer_class = EventSerializer
+    def get(self, request):
+        events = Event.objects.all()
+        serializer = self.serializer_class(events, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SchoolEventUpdateAPIView(APIView):
+    serializer_class = EventSerializer
+
+    def get(self, request, id):
+        event = Event.objects.filter(id=id).first()
+        serializer = self.serializer_class(event)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def delete(self, request, id):
+        event = Event.objects.filter(id=id).first()
+        if not event:
+            return Response({"message": f"event with id {id} was not found"}, status=status.HTTP_404_NOT_FOUND)
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def patch(self, request, id):
+        event = Event.objects.filter(id=id).first()
+        if not event:
+            return Response({"message": f"event with id {id} was not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = self.serializer_class(event, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class SchoolView(APIView):
     """
@@ -1094,6 +1213,7 @@ class GradeStudentForAllSubjectAPIView(APIView):
         
 
 class JobApplicantsView(APIView):
+
     serializer_class = JobSerializer
 
     def get(self, request):
@@ -1125,3 +1245,13 @@ class JobApplicantsView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+# class SchoolProgramAPIView(APIView):
+
+
+# class
+
+
+

@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/v1/tenant-exist/', tenant_exist_view, name='TENANT_VIEW'),
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
     path('api/v1/', include('school.urls'), name='SCHOOL'),
+    path('api/v1/commerce/', include('commerce.urls'), name='SCHOOL STORE'),
     path('admin/', admin.site.urls),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('', index, name='index'),
@@ -44,7 +45,8 @@ urlpatterns = [
    path('api/v1/devices/', FCMDeviceViewSet.as_view({'get': 'list'}), name='list_fcm_device'),
 
    # ANOUNCEMENT
-   path('api/v1/notify-all/', send_notification, name='general_anouncement'),
+    path('send-notification/', send_notification, name='send_notification'),
+
 
 ]
 urlpatterns += staticfiles_urlpatterns()

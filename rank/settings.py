@@ -35,10 +35,12 @@ ALLOWED_HOSTS = ['*', CLIENT_URL, CLIENT_URL_WILDCARD]
 TENANT_APPS = [
     'school',
     'core',
+    'commerce',
 ]
 
 SHARED_APPS = [
     'core',
+    'commerce',
     'django_tenants',
     'tenant',
     'django.contrib.admin',

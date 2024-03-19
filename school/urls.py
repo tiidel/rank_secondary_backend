@@ -1,13 +1,27 @@
 from rest_framework.routers import DefaultRouter
 from .views import *
 
-from django.urls import path
+from django.urls import path, include
+
+router = DefaultRouter()
+router.register(r'social', SocialViewSet)
+router.register(r'payment-detail', PaymentDetailViewset)
 
 urlpatterns = [
-    
+    path('', include(router.urls)),
+
     #SCHOOL
     path('schools/', SchoolView.as_view(), name="school"),
     path('school-files/<str:id>/', SchoolFilesView.as_view(), name="school-form-view"),
+
+    #SCHOOL PROGRAM
+    path('school-programs/', ProgramView.as_view(), name="school_progam"),
+    path('school-programs/<str:id>/', ProgramItemView.as_view(), name="school_progam"),
+    
+    #SCHOOL EVENTS
+    path('school-year-events/', SchoolEventAPIView.as_view(), name="events_in_program"),
+    path('school-year-events/<int:id>/', SchoolEventUpdateAPIView.as_view(), name="event"),
+
 
     #TERMS
     path('terms/', TermAPIView.as_view(), name="terms"),

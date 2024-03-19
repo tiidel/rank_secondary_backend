@@ -10,6 +10,7 @@ from django.core.validators import FileExtensionValidator
 from helper.enum import *
 from core.models import BaseModel, SchoolBaseModel
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 #
 #
 
@@ -295,7 +296,7 @@ class SchoolStaffApply(models.Model):
     
 class Event(models.Model):
     
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    programs = models.ForeignKey('school.Program', on_delete=models.CASCADE)
     
     name = models.CharField(_("Event Name"), max_length=50)
     
@@ -313,17 +314,17 @@ class Event(models.Model):
     def __str__(self):
         return self.name
     
-class Program(models.Model):
+class Program(BaseModel):
     
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     
-    event = models.ManyToManyField("Event", verbose_name=_("name"))
+    events = models.ManyToManyField("Event", verbose_name=_("name"), null=True)
     
     academic_start = models.DateField(_("Date school starts"), default=timezone.now)
     
-    academic_end = models.DateField(_("Date school closes"))
+    academic_end = models.DateField(_("Date school closes"), default=timezone.now)
     
-    is_active = models.BooleanField(_("Date program should terminate"), default=True)
+    is_active = models.BooleanField(_("Date program should terminate"), default=False)
 
     class Meta:
         
@@ -334,6 +335,33 @@ class Program(models.Model):
     
     def __str__(self):
         return f"{self.academic_start.year} - {self.academic_end.year} "
+    
+    def clean(self):
+        if self.academic_start >= self.academic_end:
+            raise ValidationError("Start date must be before end date.")
+        
+        existing_programs = Program.objects.exclude(pk=self.pk) 
+
+        if existing_programs.filter(academic_start__lt=self.academic_end, academic_end__gt=self.academic_start).exists():
+            raise ValidationError("Programs cannot overlap with each other.")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        if self.academic_end < timezone.now().date():
+            self.is_active = False
+        elif self.academic_end < self.academic_start + timezone.timedelta(days=30):
+            raise ValidationError("End date must be at least 1 month after start date.")
+        super().save(*args, **kwargs)
+
+    def update_fields(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        self.save()
+
+    def deactivate_if_expired(self):
+        if self.academic_end < timezone.now().date():
+            self.is_active = False
+            self.save()
 
 class PaymentDetail(models.Model):
     
@@ -358,8 +386,6 @@ class Social(models.Model):
     
     linkedin = models.CharField(_("linkedin profile link"), default="https://linkedin.com/tiidel", max_length=150)
  
-
-
 
 class Class(models.Model):
     """
@@ -479,6 +505,7 @@ class Subject(models.Model):
         super().save(*args, **kwargs)
         
         self.cls.subjects.add(self)
+
 
 
 class Student(models.Model):
