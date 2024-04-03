@@ -398,13 +398,30 @@ class LevelView(APIView):
         serializers = self.serializer_class(levels, many=True)
         return Response( serializers.data, status=status.HTTP_200_OK )
     
+    def find_department_by_id(self, id):
+        return Department.objects.filter(id=id).first()
+    
     def post(self, request):
-        serializers = self.serializer_class(data=request.data)
-        if serializers.is_valid():
-            serializers.save()
-            return Response(serializers.data, status=status.HTTP_201_CREATED)
-        return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST) 
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of class data"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializers = []
+        for level in request.data:
+            department = level.get('departments') 
+            department_id = self.find_department_by_id(department)
 
+            if not department_id:
+                return Response({"message": "Invalid department for level"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = self.serializer_class(data=level)
+            if serializer.is_valid():
+                serializer.save()
+                serializers.append(serializer)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
+    
+        
 class LevelItemView(APIView):
     serializer_class = LevelSerializer
     permission_classes = [IsAuthenticated]

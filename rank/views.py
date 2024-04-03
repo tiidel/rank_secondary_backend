@@ -15,10 +15,10 @@ from fcm_django.models import FCMDevice
 
 from core.serializers import LoginSerializer
 from core.user_groups import create_groups
-from firebase_admin.messaging import Message
 
 
-from firebase_admin import messaging
+# from firebase_admin.messaging import Message
+# from firebase_admin import messaging
 
 
 
@@ -171,27 +171,27 @@ def generate_unique_tenant_names(original_name):
 #     return Response({'success': 'Notification sent successfully'})
 
 
-@api_view(['POST'])
-def send_notification(request):
-    token = request.data.get('token')
-    title = request.data.get('title')
-    body = request.data.get('body')
+# @api_view(['POST'])
+# def send_notification(request):
+#     token = request.data.get('token')
+#     title = request.data.get('title')
+#     body = request.data.get('body')
 
 
-    if not (token and title and body):
-        return Response({'error': 'Missing parameters'}, status=400)
+#     if not (token and title and body):
+#         return Response({'error': 'Missing parameters'}, status=400)
 
-    try:
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title=title,
-                body=body,
-            ),
-            token=token,
-        )
-        response = messaging.send(message)
-        print('Successfully sent message:', response)
-        return Response({'success': 'Notification sent successfully'})
-    except Exception as e:
-        print('Error sending message:', e)
-        return Response({'error': 'Failed to send notification'}, status=500)
+#     try:
+#         message = messaging.Message(
+#             notification=messaging.Notification(
+#                 title=title,
+#                 body=body,
+#             ),
+#             token=token,
+#         )
+#         response = messaging.send(message)
+#         print('Successfully sent message:', response)
+#         return Response({'success': 'Notification sent successfully'})
+#     except Exception as e:
+#         print('Error sending message:', e)
+#         return Response({'error': 'Failed to send notification'}, status=500)

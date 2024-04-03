@@ -45,7 +45,7 @@ urlpatterns = [
    path('api/v1/devices/', FCMDeviceViewSet.as_view({'get': 'list'}), name='list_fcm_device'),
 
    # ANOUNCEMENT
-    path('send-notification/', send_notification, name='send_notification'),
+   #  path('send-notification/', send_notification, name='send_notification'),
 
 
 ]

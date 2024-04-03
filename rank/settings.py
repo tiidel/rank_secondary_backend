@@ -225,5 +225,5 @@ PUBLIC_SCHEMA_URLCONF = 'rank.urls'
 
 
 #FIREBASE CONFIGURATION
-cred = credentials.Certificate(os.path.join(BASE_DIR, 'credentials.json'))
-FIREBASE_APP = initialize_app(cred)
+# cred = credentials.Certificate(os.path.join(BASE_DIR, 'credentials.json'))
+# FIREBASE_APP = initialize_app(cred)
