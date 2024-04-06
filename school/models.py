@@ -406,7 +406,7 @@ class Class(models.Model):
 
     students = models.ManyToManyField('school.Student', through='StudentClassRelation')
 
-    subjects = models.ManyToManyField('Subject', related_name='classes')
+    subjects = models.ManyToManyField('Subject', related_name='classes', null=True)
 
 
 class StudentClassRelation(models.Model):

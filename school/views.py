@@ -584,18 +584,40 @@ class ClassItemView(APIView):
 #STAFF INVITE
 class InvitationView(APIView):
     serializer_class = InvitationSerializer
+    
+    def send_invite_mail(self, data):
+        context = {
+            'data': data
+        }
+        sub={
+            'email_subject': 'You have been invited to join our school',
+        }
+        send_email_with_template.delay( sub, 'staff_invite.html', context, recipient_list=[data['recipient_email']] )
+
+
     def get(self, request):
         return Response({"message": "invitations sent"}, status=status.HTTP_200_OK)
+    
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            
-            # send_invite_mail(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of Invitations"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializers = []
 
+        for invitation in request.data:
+            serializer = self.serializer_class(data=invitation)
+            if serializer.is_valid():
+                serializer.save()
+                self.send_invite_mail(serializer.data)
+                serializers.append(serializer)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
+        
+
+    
 
 class InviteConfirmationView(APIView):
     def find_invitation(self, slug):

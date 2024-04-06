@@ -16,9 +16,6 @@ def connection_test(arg1, arg2):
 
 
     
-@shared_task(base=TenantTask, bind=True)
-def my_shared_task():
-    print("foo")
 
 @app.task
 def send_email_with_template(data: dict, template_name: str, context: dict, recipient_list: list):
