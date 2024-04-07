@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student, Subject, Department, School, PaymentDetail, Social, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects, Event
+from .models import Student, Timetable, Subject, Department, School, PaymentDetail, Social, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects, Event
 from core.serializers import LoginSerializer
 
 
@@ -58,18 +58,21 @@ class DepartmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LevelSerializer(serializers.ModelSerializer):
+    departments = DepartmentSerializer()
     class Meta:
         model = Level
         fields = '__all__'
         
 class ClassSerializer(serializers.ModelSerializer):
+    level = LevelSerializer()
     class Meta:
         model = Class
         fields = '__all__'
+
 class ClassFetchSerializer(serializers.ModelSerializer):
+    level = LevelSerializer()
     class Meta:
         model = Class
-        depth = 1
         fields = '__all__'
 class ClassInstructorSerializer(serializers.ModelSerializer):
     instructor = serializers.CharField() 
@@ -79,6 +82,7 @@ class ClassInstructorSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     user = LoginSerializer()
+    student_class = ClassSerializer()
     class Meta:
         model = Student
         depth = 0
@@ -118,4 +122,10 @@ class JobSerializer(serializers.ModelSerializer):
 class SchoolStaffApplySerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolStaffApply
+        fields = '__all__'
+
+class TimetableSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Timetable
+        depth = 1
         fields = '__all__'

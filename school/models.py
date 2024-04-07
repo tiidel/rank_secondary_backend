@@ -628,3 +628,55 @@ class Guardian(BaseModel):
         
     def __str__(self):
         return f" {self.user.first_name} {self.user.last_name}"
+
+
+
+
+class Timetable(models.Model):
+        """--- Describes the timetable of a class ---"""
+
+        DAY_CHOICES = [
+            ('Monday', 'Monday'),
+            ('Tuesday', 'Tuesday'),
+            ('Wednesday', 'Wednesday'),
+            ('Thursday', 'Thursday'),
+            ('Friday', 'Friday'),
+            ('Saturday', 'Saturday'),
+            ('Sunday', 'Sunday'),
+        ]
+            
+        term = models.ForeignKey(Terms, on_delete=models.CASCADE)
+
+        class_instance = models.ForeignKey(Class, on_delete=models.CASCADE)
+        
+        day = models.CharField(_("Day of the week"), max_length=50, choices=DAY_CHOICES)
+        
+        start_time = models.TimeField(_("Time the class starts"), auto_now=False, auto_now_add=False)
+        
+        end_time = models.TimeField(_("Time the class ends"), auto_now=False, auto_now_add=False)
+        
+        subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+        
+        class Meta:
+            
+            verbose_name = _("TimeTable")
+            
+            verbose_name_plural = _("TimeTables")
+            
+        def __str__(self):
+            return f"{self.day} - {self.start_time} - {self.end_time}"
+
+
+class Attendance(models.Model):
+    """--- Manage Attendance of students in class ---"""
+
+    timetable = models.ForeignKey(Timetable, on_delete=models.CASCADE)
+
+    date = models.DateField()
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+
+    is_present = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.student} - {self.timetable} - {self.date}"

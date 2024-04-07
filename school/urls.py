@@ -75,5 +75,8 @@ urlpatterns = [
     path('students/<str:stud_id>/', StudentsInClassView.as_view(), name='students'),
     path('students/<str:stud_id>/profile/', StudentsInClassView.as_view(), name='students'),
     path('students/<str:stud_id>/performance/', StudentsInClassView.as_view(), name='students'),
+
+    #TIMETABLE
+    path('timetable/', TimeTableView.as_view(), name='timetable'),
     
 ]
