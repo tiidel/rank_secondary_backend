@@ -532,6 +532,15 @@ class Student(models.Model):
     
     is_new_student = models.BooleanField(_("Is this a transfer or new student in this school"), default=True)
 
+    qualification = models.CharField(_("Qualification of student"), max_length=256, null=True, blank=True)
+
+    academic_year = models.CharField(_("Academic year of student"), max_length=256, null=True, blank=True)
+
+    medical_condition = models.CharField(_("Medical condition of student"), max_length=256, null=True, blank=True)
+
+    emergency_contact = models.CharField(_("Emergency contact of student"), max_length=256, null=True, blank=True)
+    
+
 
     class Meta:
         
