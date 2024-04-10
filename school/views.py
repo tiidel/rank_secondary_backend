@@ -245,11 +245,14 @@ class TermAPIView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
     
     def post(self, request):
-        terms_data = request.data
+
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of terms"}, status=status.HTTP_400_BAD_REQUEST)
+        
         created_terms = []
         errors = []
 
-        for term_data in terms_data:
+        for term_data in request.data:
             start_date = term_data.get('start_date')
             end_date = term_data.get('end_date')
 
@@ -542,7 +545,7 @@ class ClassItemView(APIView):
         cls = self.find_class_by_id(class_id)
         if not cls:
             return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
-        serializers = self.serializer_class(cls)
+        serializers = ClassItemSerializer(cls)
         return Response(serializers.data, status=status.HTTP_200_OK)
 
     def put(self, request, class_id):
@@ -596,7 +599,9 @@ class InvitationView(APIView):
 
 
     def get(self, request):
-        return Response({"message": "invitations sent"}, status=status.HTTP_200_OK)
+        invitations = Invitation.objects.filter(is_deleted=False)
+        serializer = self.serializer_class(invitations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 
     def post(self, request):
@@ -973,32 +978,39 @@ class SubjectLevelView(APIView):
             return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND) 
         
         subjects = self.get_subjects_in_class(cls)
-        serializer = self.serializer_class(subjects, many=True)
+        serializer = SubjectRequestSerializer(subjects, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, cls_id):
-        lvl_id = request.data.get('level')
-        instructor_id = request.data.get('instructor')
-
+        
         cls = self.find_class_by_id(cls_id)
         if not cls:
             return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
-        
-        instructor = Staff.objects.filter(id=instructor_id).first()
-        level = Level.objects.filter(id=lvl_id).first()
+    
+        subjects_created = []
+        for data in request.data:
+            lvl_id = data.get('level')
+            instructor_id = data.get('instructor')
 
-        if not instructor or not level:
-            return Response({"message": "Invalid subject request, please verify instructor or level"}, status=status.HTTP_403_FORBIDDEN)
-        
-        request.data['instructor'] = instructor
-        request.data['level'] = level
-        request.data['cls'] = cls_id
-        serializer = self.serializer_class(data=request.data)
+            instructor = Staff.objects.filter(id=instructor_id).first()
+            level = Level.objects.filter(id=lvl_id).first()
 
-        if serializer.is_valid():
-            subject = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if not instructor or not level:
+                return Response({"message": "Invalid subject request, please verify instructor or level"}, status=status.HTTP_403_FORBIDDEN)
+        
+            data['instructor'] = instructor
+            data['level'] = level
+            data['cls'] = cls_id
+            serializer = self.serializer_class(data=data)
+
+            if serializer.is_valid():
+                subject = serializer.save()
+                subjects_created.append(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(subjects_created, status=status.HTTP_201_CREATED)
+           
         
 
 class SubjectChangeInstructor(APIView):     
@@ -1030,7 +1042,7 @@ class SubjectChangeInstructor(APIView):
 # class RegistrationView(APIView):
 
 
-class StudentView(APIView):
+class StudentsView(APIView):
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated]
 
@@ -1100,6 +1112,14 @@ class StudentView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+class StudentView(APIView):
+    serializer_class = StudentSerializer
+    def get(self, request, stud_id):
+        student = Student.objects.filter(id=stud_id)
+        serializer = self.serializer_class(student, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class StudentsInClassView(APIView):
     serializer_class = StudentSerializer
     def get_students_in_class(self, cls_id):
@@ -1114,6 +1134,20 @@ class StudentsInClassView(APIView):
     def post(self, request, cls_id):
         pass
 
+
+class StudentsSubjectsView(APIView):
+    serializer_class = StudentSubjectForStudentSerializer
+    
+    def get(self, request, stud_id):
+        """--- GET STUDENT SUBJECTS ---"""
+        student = Student.objects.filter(id=stud_id).first()
+        if not student:
+            return Response({"message": "No student with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        subjects = StudentSubjects.objects.filter(student=student)
+        serializer = self.serializer_class(subjects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+  
 
 # TEACHER GRADE API
 class GradeStudentView(APIView):
@@ -1220,7 +1254,7 @@ class GradeStudentForAllSubjectAPIView(APIView):
         term = Terms.objects.filter(id=term_id).first()
 
         # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
-        if not term.term_validated and datetime.now().date() < term.end_date:
+        if not term.term_validated and datetime.now().date() < term.start_date:
             return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
         
         marks_data = request.data

@@ -58,21 +58,33 @@ class DepartmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LevelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Level
+        fields = '__all__'
+        
+class LevelClassSerializer(serializers.ModelSerializer):
     departments = DepartmentSerializer()
     class Meta:
         model = Level
         fields = '__all__'
         
 class ClassSerializer(serializers.ModelSerializer):
-    level = LevelSerializer()
     class Meta:
         model = Class
         fields = '__all__'
 
 class ClassFetchSerializer(serializers.ModelSerializer):
-    level = LevelSerializer()
+    level = LevelClassSerializer()
     class Meta:
         model = Class
+        fields = '__all__'
+
+class ClassItemSerializer(serializers.ModelSerializer):
+    level = LevelClassSerializer()
+
+    class Meta:
+        model = Class
+        depth = 2
         fields = '__all__'
 class ClassInstructorSerializer(serializers.ModelSerializer):
     instructor = serializers.CharField() 
@@ -87,6 +99,11 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         depth = 0
         fields = '__all__'
+        
+class StudentItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = '__all__'
 
 class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
@@ -97,11 +114,17 @@ class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
         fields = '__all__'
+
+class SubjectRequestSerializer(serializers.ModelSerializer):
+    instructor = StaffSerializer()
+    class Meta:
+        model = Subject
+        fields = '__all__'
 class StudentSubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentSubjects
         fields = '__all__'
-    
+      
 
 class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -128,4 +151,16 @@ class TimetableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Timetable
         depth = 1
+        fields = '__all__'
+
+# =========== STUDENT SUBJECT SERIALIZER =================
+class SubjectWithInstructorSerializer(serializers.ModelSerializer):
+    instructor = StaffSerializer()
+    class Meta:
+        model = Subject
+        fields = '__all__'
+class StudentSubjectForStudentSerializer(serializers.ModelSerializer):
+    subject = SubjectWithInstructorSerializer()
+    class Meta:
+        model = StudentSubjects
         fields = '__all__'

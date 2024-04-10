@@ -13,7 +13,8 @@ models = [
     Student,
     Staff,
     Class,
-    StudentClassRelation
+    StudentClassRelation,
+    Terms
 ]
 
 admin.site.register( models )

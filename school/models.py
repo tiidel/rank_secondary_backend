@@ -125,6 +125,9 @@ class Terms(models.Model):
         return self.term_name
     
     def save(self, *args, **kwargs):
+        # if self.start_date > self.end_date:
+        #     raise ValidationError("Start date must be before end date.")
+        
         if self.end_date < timezone.now().date():
             self.term_validated = True
         super().save(*args, **kwargs)
