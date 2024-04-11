@@ -124,9 +124,18 @@ WSGI_APPLICATION = 'rank.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-# DATABASES = {
-#     'default': dj_database_url.parse(config('DATABASE_URL'))
-# }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django_tenants.postgresql_backend',
+        'NAME': 'postgres',
+        'USER': 'ragrbugguk',
+        'PASSWORD': '#@!prodigy#676638050&&',
+        'HOST': 'rank-server.postgres.database.azure.com',
+        'PORT': '5432',
+    }
+}
+
 
 
 DATABASE_ROUTERS = [
