@@ -25,11 +25,11 @@ services:
   db:
     image: "postgres:14-alpine"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:rank-server.postgres.database.azure.com
     environment:
-      - POSTGRES_DB=rank
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=prodigy
+      - POSTGRES_DB=rank-database
+      - POSTGRES_USER=ragrbugguk
+      - POSTGRES_PASSWORD=#@!prodigy#676638050&&
     ports:
       - "5433:5432"
       
@@ -43,7 +43,7 @@ services:
     ports:
       - "8000:8001"
     environment:
-      - DEBUG=1
+      - DEBUG=0
     volumes:
       - .:/code
 
