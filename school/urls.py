@@ -1,5 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import *
+from wkhtmltopdf.views import PDFTemplateView
 
 from django.urls import path, include
 
@@ -80,4 +81,9 @@ urlpatterns = [
     #TIMETABLE
     path('timetable/', TimeTableView.as_view(), name='timetable'),
     
+
+    # DOWNLOAD 
+    path('generate-pdf/', generate_pdf, name='generate_pdf'),
+    path('pdf/', PDFTemplateView.as_view(template_name='results/template_one.html',
+                                           filename='my_pdf.pdf'), name='pdf'),
 ]

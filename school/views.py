@@ -2,7 +2,9 @@ from django.shortcuts import render
 from rest_framework_simplejwt import tokens
 from rest_framework.views import APIView, status, Response
 from rest_framework.pagination import PageNumberPagination
+from wkhtmltopdf.views import PDFTemplateResponse
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
 
     
 from .models import *
@@ -1343,3 +1345,17 @@ class TimeTableView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+def generate_pdf(request):
+    students = Student.objects.all()  
+    return PDFTemplateResponse(request=request,
+            template='results/template_one.html',
+            context={'students': students},
+            filename='report_card.pdf')
+
+
+
+    # return Response({"message": "hello world"}, status=status.HTTP_200_OK)

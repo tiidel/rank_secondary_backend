@@ -55,10 +55,14 @@ SHARED_APPS = [
     'rest_framework_simplejwt',
     'django_extensions',
     'celery',
-    'fcm_django'
+    'fcm_django',
 ]
 
 
+# WKHTMLTOPDF = os.path.join(BASE_DIR, 'wkhtmltopdf/bin/wkhtmltopdf.exe')
+# WKHTMLTOPDF_CMD_OPTIONS = {
+#     'quiet': True,
+# }
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS ]
 AUTH_USER_MODEL = 'core.user'
