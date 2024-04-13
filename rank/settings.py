@@ -129,16 +129,16 @@ WSGI_APPLICATION = 'rank.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django_tenants.postgresql_backend',
-        'NAME': 'postgres',
-        'USER': 'ragrbugguk',
-        'PASSWORD': '#@!prodigy#676638050&&',
-        'HOST': 'rank-server.postgres.database.azure.com',
-        'PORT': '5432',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django_tenants.postgresql_backend',
+#         'NAME': 'postgres',
+#         'USER': 'ragrbugguk',
+#         'PASSWORD': '#@!prodigy#676638050&&',
+#         'HOST': 'rank-server.postgres.database.azure.com',
+#         'PORT': '5432',
+#     }
+# }
 
 
 
@@ -236,7 +236,19 @@ PUBLIC_SCHEMA_URLCONF = 'rank.urls'
 
 
 
-
 #FIREBASE CONFIGURATION
-# cred = credentials.Certificate(os.path.join(BASE_DIR, 'credentials.json'))
-# FIREBASE_APP = initialize_app(cred)
+cred = credentials.Certificate(os.path.join(BASE_DIR, 'credentials.json'))
+FIREBASE_APP = initialize_app(cred)
+
+
+FIREBASE_CONFIG = {
+    "apiKey": "AIzaSyCsyMAEaw1JXhB-UjsGKClN-Vu8ACn-RAg",
+    "authDomain": "rank-7c233.firebaseapp.com",
+    "projectId": "rank-7c233",
+    "storageBucket": "rank-7c233.appspot.com",
+    "messagingSenderId": "238023174027",
+    "appId": "1:238023174027:web:31fc5f2571cf9a07e0f18e",
+    "fcm": "BEkco1ByWwEZteLwy_MHJAYZxIVn-j7gLXnC59e6lOKjcvUnoO4TQeWvGu6KfG4MifujJY7PItjbo2-Er0294Ks",
+}
+
+

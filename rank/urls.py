@@ -47,7 +47,6 @@ urlpatterns = [
    # ANOUNCEMENT
    #  path('send-notification/', send_notification, name='send_notification'),
 
-
 ]
 urlpatterns += staticfiles_urlpatterns()
 urlpatterns += static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)

@@ -34,7 +34,11 @@ services:
   # WEB SERVICE
   web:
     build: .
-    command: ["python", "run.py", "runserver", "0.0.0.0:8001"]
+    command: >
+      sh -c "python run.py migrate &&
+      python run.py create_public_tenant &&
+      python run.py runserver 0.0.0.0:8001"
+
     depends_on:
       - db
       - redis
