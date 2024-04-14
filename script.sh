@@ -7,5 +7,5 @@ tenant = Client(schema_name="public", name="default server");
 tenant.save();
 
 # REGISTER DOMAIN 
-domain = Domain(domain = "localhost", tenant = tenant);
+domain = Domain(domain = "rank.azurewebsites.net/", tenant = tenant);
 domain.save();

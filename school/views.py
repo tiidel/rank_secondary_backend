@@ -2,7 +2,9 @@ from django.shortcuts import render
 from rest_framework_simplejwt import tokens
 from rest_framework.views import APIView, status, Response
 from rest_framework.pagination import PageNumberPagination
+from wkhtmltopdf.views import PDFTemplateResponse
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
 
     
 from .models import *
@@ -43,15 +45,33 @@ from django.db.models import Case, CharField, Value, When
 
 @receiver(post_save, sender=Subject)
 def create_student_subjects(sender, instance, created, **kwargs):
+    """
+    Signal receiver function to create StudentSubjects instances
+    for all students when a new subject is created.
+    """
     if created:
         students = instance.cls.students.all()
-
         terms = Terms.objects.all()
 
         for student in students:
             for term in terms:
-                StudentSubjects.objects.create(student=student, subject=instance, terms=term)
+                student_subject = StudentSubjects.objects.create(student=student, subject=instance, terms=term)
+                update_grade_instance(student_subject)
 
+
+def update_grade_instance(student_subject):
+    """
+    Update Grade instance for the student whenever a StudentSubjects instance is created or updated.
+    """
+    grade, _ = Grade.objects.get_or_create(
+        student=student_subject.student,
+        classroom=student_subject.student.student_class,
+        term=student_subject.terms
+    )
+
+    grade.grade_list.add(student_subject)
+
+    grade.save()
 
 
 class ProgramView(APIView):
@@ -1343,3 +1363,25 @@ class TimeTableView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+def generate_pdf(request):
+    return PDFTemplateResponse(request=request,
+            template='results/template_one.html',
+            context={'students': "Nji kimbi darlington"},
+            filename='report_card.pdf')
+
+
+
+@api_view(['GET'])
+def download_student_result(request, stud_id):
+    student_grades = StudentSubjects.objects.filter(student=stud_id)
+    
+    return PDFTemplateResponse(request=request,
+            template='results/template-one.html',
+            context={'grades':student_grades, 'student': student_grades[0].student},
+            filename='report_card.pdf')
+    # print(student_grades)
+    # return Response({"hello"})
