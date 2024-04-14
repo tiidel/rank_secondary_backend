@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from core.models import User
 
 from django.utils import timezone, text, crypto
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from helper.enum import *
 from core.models import BaseModel, SchoolBaseModel
 from django.contrib.postgres.fields import ArrayField
@@ -554,18 +554,36 @@ class Student(models.Model):
     def __str__(self):
         return f" {self.user.first_name} {self.user.last_name}"
     
+
     def save(self, *args, **kwargs):
+
         created = not self.pk  
         super().save(*args, **kwargs)
         
         if created or 'student_class' in kwargs.get('update_fields', []):
             class_instance = self.student_class
 
+            existing_subjects = set(self.studentsubjects_set.values_list('subject_id', flat=True))
+
             subjects = class_instance.subjects.all()
 
+            grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance)
+
             for subject in subjects:
-                ssr = StudentSubjects.objects.create(student=self, subject=subject)
-            StudentClassRelation.objects.create(student=self, class_instance=self.student_class)
+                if subject.id not in existing_subjects:
+                    sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject)
+                    grade.grade_list.add(sts)
+
+
+
+
+            if not self.studentclassrelation_set.filter(class_instance=class_instance).exists():
+                StudentClassRelation.objects.create(student=self, class_instance=class_instance)
+
+            grade.save()
+            
+
+
     
 
 class StudentSubjects(models.Model):
@@ -574,9 +592,9 @@ class StudentSubjects(models.Model):
     
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
 
-    first_seq = models.IntegerField(_("First sequence grade"), default=0, null=True, blank=True)
+    first_seq = models.IntegerField(_("First sequence grade"), default=0,validators=[MinValueValidator(0), MaxValueValidator(100)])
 
-    second_seq = models.IntegerField(_("Second sequence grade"), default=0, null=True, blank=True)
+    second_seq = models.IntegerField(_("Second sequence grade"), default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     terms = models.ForeignKey(Terms, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -598,6 +616,63 @@ class StudentSubjects(models.Model):
         else:
             self.seq_average = None
         super().save(*args, **kwargs)
+
+
+class Sequence(models.Model):
+    """ --- Describes the sequence of the school year --- """
+    name = models.CharField(_("Name of the sequence e.g first sequence, second sequence"), max_length=100, null=False, blank=False)
+    
+    start_date = models.DateField(_("Date sequence starts"), auto_now_add=True, null=True, blank=True)
+    
+    end_date = models.DateField(_("Date sequence ends"), auto_now=False, auto_now_add=False, null=True, blank=True)
+    
+    class Meta:
+        
+        verbose_name = _("Sequence")
+        
+        verbose_name_plural = _("Sequences")
+        
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        if self.start_date > self.end_date:
+            raise ValidationError("Start date must be before end date.")
+        super().save(*args, **kwargs)
+
+
+class Grade(models.Model):
+    """ --- Student Grade for Term --- """
+    id = models.BigAutoField(primary_key=True)
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+
+    classroom = models.ForeignKey(Class, on_delete=models.CASCADE)
+
+    term  = models.ForeignKey(Terms, on_delete=models.CASCADE, null=True, blank=True)
+
+    average = models.FloatField(_("Student average for the term"), default=0)
+
+    position = models.IntegerField(_("Student position in class"), null=True)
+
+    grade_list = models.ManyToManyField(StudentSubjects, related_name='student_rank_grades' )
+
+    def calculate_average(self):
+        """Calculate the average grade for the student for the term"""
+        total_grades = sum(subject.seq_average for subject in self.grade_list.all())
+        num_subjects = self.grade_list.count()
+        self.average = total_grades / num_subjects if num_subjects > 0 else 0
+
+    def save(self, *args, **kwargs):
+        """Save and update average grade"""
+        super().save(*args, **kwargs)
+
+        # self.calculate_average()
+
+    class Meta:
+        ordering = ['-average']
+
 
 
 class Registration(BaseModel):

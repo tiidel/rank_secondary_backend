@@ -48,7 +48,7 @@ def create_tenant_view(request):
             new_tenant = Client(schema_name=tenant_name, name=school_name)
             new_tenant.save()
 
-            new_domain = Domain(tenant=new_tenant, domain=f'{tenant_name}.0.0.0.0' )
+            new_domain = Domain(tenant=new_tenant, domain=f'{tenant_name}.localhost' )
             new_domain.save()
 
             # Create groups for this user
