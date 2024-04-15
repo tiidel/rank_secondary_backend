@@ -154,6 +154,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registration
         fields = '__all__'
+class RegistrationFetchSerializer(serializers.ModelSerializer):
+    student = StudentSerializer()
+    receiver = LoginSerializer()
+    class Meta:
+        model = Registration
+        fields = '__all__'
 
 
 class GuardianSerializer(serializers.ModelSerializer):

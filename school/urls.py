@@ -100,4 +100,8 @@ urlpatterns = [
         filename='my_pdf.pdf'), name='pdf'),
     
 
+    # REGISTRATION AND PROMOTION 
+    path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),
+
+
 ]
