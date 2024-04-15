@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student, Timetable, Subject, Department, School, PaymentDetail, Social, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects, Event
+from .models import Student, Timetable, Subject, Sequence, Grade, Department, School, PaymentDetail, Social, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects, Event
 from core.serializers import LoginSerializer
 
 
@@ -41,7 +41,11 @@ class TermsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Terms
         fields = '__all__'
-        
+class SequenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sequence
+        fields = '__all__'
+
 class SchoolFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
@@ -126,6 +130,26 @@ class StudentSubjectSerializer(serializers.ModelSerializer):
         fields = '__all__'
       
 
+class StudentSubjectsSerializer(serializers.ModelSerializer):
+    subject = SubjectSerializer()
+    class Meta:
+        model = StudentSubjects
+        fields = '__all__'
+      
+
+class GuardianSerializer(serializers.ModelSerializer):
+    subject = LoginSerializer()
+    class Meta:
+        model = Guardian
+        fields = '__all__'
+
+class GradeSerializer(serializers.ModelSerializer):
+    grade_list = StudentSubjectsSerializer(many=True, read_only=True)
+    class Meta:
+        model = Grade
+        fields = '__all__'    
+
+
 class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registration
@@ -133,6 +157,13 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 
 class GuardianSerializer(serializers.ModelSerializer):
+    user = LoginSerializer()
+    class Meta:
+        model = Guardian
+        fields = '__all__'
+class GuardianItemSerializer(serializers.ModelSerializer):
+    user = LoginSerializer()
+    student = StudentSerializer(many=True, read_only=True)
     class Meta:
         model = Guardian
         fields = '__all__'

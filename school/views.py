@@ -5,6 +5,8 @@ from rest_framework.pagination import PageNumberPagination
 from wkhtmltopdf.views import PDFTemplateResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
+from django.shortcuts import get_object_or_404
+from collections import defaultdict
 
     
 from .models import *
@@ -51,11 +53,12 @@ def create_student_subjects(sender, instance, created, **kwargs):
     """
     if created:
         students = instance.cls.students.all()
-        terms = Terms.objects.all()
-
+        sequences = Sequence.objects.all()
+        
         for student in students:
-            for term in terms:
-                student_subject = StudentSubjects.objects.create(student=student, subject=instance, terms=term)
+            for sequence in sequences:
+                student_subject = StudentSubjects.objects.create(student=student, subject=instance, sequence=sequence)
+            
                 update_grade_instance(student_subject)
 
 
@@ -66,12 +69,31 @@ def update_grade_instance(student_subject):
     grade, _ = Grade.objects.get_or_create(
         student=student_subject.student,
         classroom=student_subject.student.student_class,
-        term=student_subject.terms
+        term=student_subject.sequence.term
     )
 
     grade.grade_list.add(student_subject)
 
     grade.save()
+
+
+# ////////////// DO NOT UNCOMMENT THIS. IT EXIST ALREADY IN SETTINGS ///////////////////////
+# @receiver(post_save, sender=Student)
+# def create_student_subjects(sender, instance, created, **kwargs):
+#     if created:
+#         # Get the student's class
+#         student_class = instance.student_class
+
+#         # Get all subjects associated with the student's class
+#         subjects = student_class.subjects.all()
+
+#         # Get all sequences
+#         sequences = Sequence.objects.all()
+
+#         # Create a StudentSubjects instance for each subject and sequence
+#         for subject in subjects:
+#             for sequence in sequences:
+#                 StudentSubjects.objects.create(student=instance, subject=subject, sequence=sequence)
 
 
 class ProgramView(APIView):
@@ -339,6 +361,23 @@ class ActiveTermView(APIView):
             return Response(data, status=status.HTTP_200_OK)
         else:
             return Response({'message': 'There is no active term.'}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class SequenceView(APIView):
+    serializer_class = SequenceSerializer
+    def get(self, request):
+        sequences = Sequence.objects.all()
+        serializer = self.serializer_class(sequences, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
             
 #DEPARTMENT  
 class DepartementView(APIView):
@@ -1006,6 +1045,9 @@ class SubjectLevelView(APIView):
         cls = self.find_class_by_id(cls_id)
         if not cls:
             return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of terms"}, status=status.HTTP_400_BAD_REQUEST)
     
         subjects_created = []
         for data in request.data:
@@ -1024,7 +1066,7 @@ class SubjectLevelView(APIView):
             serializer = self.serializer_class(data=data)
 
             if serializer.is_valid():
-                subject = serializer.save()
+                serializer.save()
                 subjects_created.append(serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1118,7 +1160,6 @@ class StudentsView(APIView):
             return Response({"message": "Invalid student level"}, status=status.HTTP_400_BAD_REQUEST)
 
         request.data.pop('password', None)
-        request.data.pop('username', None)
         request.data.pop('email', None)
         request.data.pop('first_name', None)
         request.data.pop('last_name', None)
@@ -1169,6 +1210,131 @@ class StudentsSubjectsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
   
 
+
+class GuardiansView(APIView):
+    serializer_class = GuardianSerializer
+    
+    def get(self, request):
+        guardians = Guardian.objects.all()
+        serializer = self.serializer_class(guardians, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def generate_random_password(self):
+        return User.objects.make_random_password()
+    
+    def generate_unique_email(self):
+        prefix = 'parent'
+        suffix = ''.join(random.choices(string.digits, k=4))
+        return f"{prefix}{suffix}@rank.com"
+    
+
+    def assign_user_to_group(self, user, role):
+        group = Group.objects.get(name__iexact=role)
+        if group:
+            return group.user_set.add(user)
+        
+    def create_user_with_role(self, data, role, generated_email):
+        generated_password = self.generate_random_password()
+        
+        data.pop('type', None)
+        data.pop('student', None)
+        alt_mail = data.pop('alt_mail', None)
+        
+        user_exist = User.objects.filter(email=alt_mail).first()
+        if user_exist:
+            return user_exist
+        
+
+
+        data['email'] = alt_mail if len(alt_mail) > 0 else generated_email
+        data['password'] = generated_password
+
+        user = User.objects.create_user(**data)
+        self.assign_user_to_group(user, role)
+        return user
+    
+
+    def find_guardian_by_email(self, email):
+        return Guardian.objects.filter(alt_mail=email).first()
+    
+    def post(self, request):
+
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of terms"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        guardians_data = request.data
+        created_guardians = []
+
+        for guardian_data in guardians_data:
+            email = guardian_data.get('alt_mail')
+            user_exist = self.find_guardian_by_email(email)
+
+            if not user_exist:
+                req = copy.deepcopy(guardian_data)
+                generated_email = self.generate_unique_email()
+                user = self.create_user_with_role(req, "guardian", generated_email)
+            else:
+                user = User.objects.filter(email=user_exist.user.email).first()
+
+            student_id = guardian_data.get('student')
+            student = Student.objects.filter(id=student_id).first()
+
+            if not student:
+                return Response({"message": "Student not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not user:
+                return Response({'message': 'No user found'}, status=status.HTTP_400_BAD_REQUEST)
+
+            guardian_data.pop('phone', None)
+            guardian_data.pop('first_name', None)
+            guardian_data.pop('last_name', None)
+            guardian_data.pop('student', None)
+
+            guardian = None
+
+            if not user_exist:
+                guardian = Guardian.objects.create(user=user, **guardian_data)
+                guardian.student.set([student])
+           
+            else:
+                guardian = Guardian.objects.filter(alt_mail=email).first()
+                students = list(guardian.student.all())
+                students.append(student)
+                guardian.student.set(students)
+
+            guardian.save()
+            created_guardians.append(guardian)
+
+        serializer = self.serializer_class(created_guardians, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
+class GuardianDetail(APIView):
+    serializer_class = GuardianItemSerializer
+    
+    def get_object(self, id):
+        return get_object_or_404(Guardian, id=id)
+    
+    def get(self, request, id):
+        guardian = self.get_object(id)
+        serializer = self.serializer_class(guardian)
+        return Response( serializer.data , status=status.HTTP_200_OK)
+    
+    def put(self, request, id):
+        guardian = self.get_object(id)
+        serializer = self.serializer_class(guardian, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id):
+        guardian = self.get_object(id)
+        guardian.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # TEACHER GRADE API
 class GradeStudentView(APIView):
     """ ----- GRADE ALL STUDENTS FOR A PARTCULAR COURSE ----- """
@@ -1196,8 +1362,9 @@ class GradeStudentView(APIView):
         
         for data in marks_data:
             student_id = data.get('student')
+            sequence_id = data.get('sequence')
             try:
-                student_grade = StudentSubjects.objects.get(subject=subj_id, student=student_id, terms=active_term.id)
+                student_grade = StudentSubjects.objects.get(subject=subj_id, student=student_id, sequence=sequence_id)
                 serializer = self.serializer_class(instance=student_grade, data=data, partial=True)
                 
                 if serializer.is_valid():
@@ -1232,18 +1399,19 @@ class GradeStudentForSubjectAPIView(APIView):
             return Response({"message": "Invalid term or subject"}, status=status.HTTP_400_BAD_REQUEST)
         
         marks_data = request.data
-        updated_grades = {}
+        updated_grades = []
         invalid_students = []
 
         for data in marks_data:
             student_id = data.get('student')
+            sequence = data.get('sequence')
             try:
-                student_grade = StudentSubjects.objects.get(subject=subject, student=student_id, terms=term)
+                student_grade = StudentSubjects.objects.get(subject=subject, student=student_id, sequence=sequence)
                 serializer = StudentSubjectSerializer(instance=student_grade, data=data, partial=True)
                 
                 if serializer.is_valid():
                     serializer.save()
-                    updated_grades[student_id] = serializer.data
+                    updated_grades.append( serializer.data )
                 
                 else:
                     invalid_students.append({"student": student_id, "errors": serializer.errors})
@@ -1261,10 +1429,10 @@ class GradeStudentForSubjectAPIView(APIView):
 class GradeStudentForAllSubjectAPIView(APIView):
     """ --- GRADE STUDENT FOR ALL SUBJECTS IN A PARTICULAR TERM --- """
     
-    serializer_class = StudentSubjectSerializer
+    serializer_class = GradeSerializer
 
     def get(self, request, term_id, student_id):
-        student_marks = StudentSubjects.objects.filter(terms=term_id, student=student_id)
+        student_marks = Grade.objects.filter(term=term_id, student=student_id)
         serializer = self.serializer_class(student_marks, many=True)
         
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1385,3 +1553,73 @@ def download_student_result(request, stud_id):
             filename='report_card.pdf')
     # print(student_grades)
     # return Response({"hello"})
+
+@api_view(['GET'])
+def download_student_result_for_term(request, term_id, stud_id):
+    student_grades = get_object_or_404(Grade, student=stud_id, term=term_id)
+
+    grade_list = student_grades.grade_list.all()
+
+     # Organize the grades by sequences
+    grades_by_sequence = {}
+    for grade in grade_list:
+        sequence_id = grade.sequence.id
+        if sequence_id not in grades_by_sequence:
+            grades_by_sequence[sequence_id] = []
+        grades_by_sequence[sequence_id].append(grade)
+
+    ctx = {'grades_by_sequence': grades_by_sequence, 'student': student_grades.student}
+    
+    return PDFTemplateResponse(
+        request=request,
+        template='results/template-one.html',
+        context=ctx,
+        filename='report_card.pdf'
+    )
+
+
+
+
+
+# @api_view(['GET'])
+# def download_student_result_for_term(request, term_id, stud_id):
+#     student_grades = get_object_or_404(Grade, student=stud_id, term=term_id)
+
+#     grade_list = student_grades.grade_list.all()
+
+#     grades_by_sequence = defaultdict(list)
+#     for grade in grade_list:
+#         sequence_id = grade.sequence.id
+#         grades_by_sequence[sequence_id].append(grade)
+
+#     # Group StudentSubjects by subject and sequence
+#     grades_by_subject_and_sequence = defaultdict(list)
+#     for grade in grade_list:
+#         grades_by_subject_and_sequence[(grade.subject.id, grade.sequence_id)].append(grade)
+
+#     grades_for_template = []
+#     for (subject_id, sequence_id), grades in grades_by_subject_and_sequence.items():
+#         # Calculate average grade for the sequence
+#         seq_average = sum(grade.grade for grade in grades) / len(grades)
+
+#         # Get other subject details
+#         subject = Subject.objects.get(pk=subject_id)
+#         sub_coef = subject.sub_coef
+
+#         # Add data to the list for template
+#         grades_for_template.append({
+#             'subject_name': subject.name,
+#             'grades': [grade.grade for grade in grades],
+#             'seq_average': seq_average,
+#             'sub_coef': sub_coef,
+#         })
+
+#     ctx = {'grades_for_template': grades_for_template, 'student': student_grades.student}
+#     print(ctx)
+    
+#     return PDFTemplateResponse(
+#         request=request,
+#         template='results/template-one.html',
+#         context=ctx,
+#         filename='report_card.pdf'
+#     )
