@@ -1308,8 +1308,6 @@ class GuardiansView(APIView):
         serializer = self.serializer_class(created_guardians, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-
 class GuardianDetail(APIView):
     serializer_class = GuardianItemSerializer
     
@@ -1576,6 +1574,79 @@ def download_student_result_for_term(request, term_id, stud_id):
         context=ctx,
         filename='report_card.pdf'
     )
+
+
+
+class RegistrationListCreateAPIView(APIView):
+    def get(self, request):
+        registrations = Registration.objects.all()
+        serializer = RegistrationSerializer(registrations, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = RegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegistrationRetrieveUpdateDestroyAPIView(APIView):
+    def get_object(self, pk):
+        try:
+            return Registration.objects.get(pk=pk)
+        except Registration.DoesNotExist:
+            raise Response({"message": "No registration found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def get(self, request, pk):
+        registration = self.get_object(pk)
+        serializer = RegistrationSerializer(registration)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        registration = self.get_object(pk)
+        serializer = RegistrationSerializer(registration, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        registration = self.get_object(pk)
+        registration.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+class PromoteStudentAPIView(APIView):
+    def post(self, request, student_id, new_class_id):
+        # Retrieve the student and new class instances
+        student = get_object_or_404(Student, id=student_id)
+        new_class = get_object_or_404(Class, id=new_class_id)
+        
+        # Check if the student is already associated with the new class
+        if StudentClassRelation.objects.filter(student=student, class_instance=new_class).exists():
+            return Response({"message": "Student is already in the target class"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Remove the student from the current class
+        current_class_relation = StudentClassRelation.objects.filter(student=student)
+        current_class_relation.delete()
+        
+        # Create a new association between the student and the new class
+        StudentClassRelation.objects.create(student=student, class_instance=new_class)
+
+        student.student_class = new_class
+        student.save()
+        
+        # Optionally, you can perform additional actions here, such as updating the student's grade, position, etc.
+        
+        return Response({"message": "Student promoted to new class successfully",
+                         "student_id": student_id,
+                         "new_class_id": new_class_id},
+                        status=status.HTTP_200_OK)
+    
+
 
 
 
