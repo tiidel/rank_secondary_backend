@@ -28,6 +28,11 @@ urlpatterns = [
     path('terms/', TermAPIView.as_view(), name="terms"),
     path('terms/<int:id>/', TermAPIView.as_view(), name='term_detail'),
     path('terms/active/', ActiveTermView.as_view(), name='active_term'),
+
+
+    #TERMS
+    path('sequences/', SequenceView.as_view(), name="seq"),
+
     
     # DEPARTMENT
     path('departments/', DepartementView.as_view(), name="department"),
@@ -70,6 +75,10 @@ urlpatterns = [
     path('grades/<str:term>/<str:subject>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
     path('grades/student/<str:term_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
+    # GUARDIANS
+    path('guardians/', GuardiansView.as_view(), name="guardian_view"),
+    path('guardians/<str:id>/', GuardianDetail.as_view(), name="guardian_view"),
+
     #STUDENTS
     path('students/', StudentsView.as_view(), name='students'),
     path('students/<str:stud_id>/', StudentView.as_view(), name='students'),
@@ -85,6 +94,7 @@ urlpatterns = [
     # DOWNLOAD 
     # path('generate-pdf/', generate_pdf, name='generate_pdf'),
     path('student_result/<str:stud_id>/download', download_student_result, name='download_student_result'),
+    path('student_result/<str:term_id>/<str:stud_id>/download', download_student_result_for_term, name='download_student_result'),
     path('zip/<str:cls>/<str:term>/', download_zip, name='download_zip'),
     path('pdf/', PDFTemplateView.as_view(template_name='results/template_one.html',
         filename='my_pdf.pdf'), name='pdf'),

@@ -112,7 +112,7 @@
 
             <section class="mt-3" >
                 <table>
-                    <tr>
+                    <!-- <tr>
                         <th style="width: 275px;" colspan="2">Subject</th>
                         <th>Eval 1</th>
                         <th>Eval 2</th>
@@ -121,23 +121,39 @@
                         <th>Total</th>
                         <th>Rank</th>
                         <th>Appreciation</th>
-                    </tr>
-                    
-                    {% for grade in grades %}
+                    </tr> -->
                     <tr>
-                        <td colspan="2">{{ grade.subject.name }}</td>
-                        <td>{{ grade.first_seq }}</td>
-                        <td>{{ grade.second_seq }}</td>
-                        <td>{{ seq_average }}</td>
-                        <td>{{ grade.coef  }}</td>
-                        <td>19.00</td>
-                        <td>17<sup class="font-weight-bold">em</sup></td>
-                        <td>Assez-Bien</td>
+                        <th style="width: 275px;" colspan="2">Subject</th>
+                        {% for sequence_id, grades in grades_by_sequence.items %}
+                        <th>Eval {{ sequence_id }}</th>
+                        {% endfor %}
+                        <th>Average</th>
+                        <th>Coeff</th>
+                        <th>Total</th>
+                        <th>Rank</th>
+                        <th>Appreciation</th>
                     </tr>
+                    
+                    
+                    {% for id, subject_grade in grades_by_sequence.values %}
+                        {% for sequence_id, grades in grades_by_sequence.items %}
+                            {% for grade in grades %}
+                                <tr>
+                                    <td colspan="2">{{ grade.subject.name }}</td>
+                                    <td> {{ grade.grade }} </td>
+                                    <td>{{ subject_grade }} </td>
+                                    <td>{{ grades }}</td>
+                                    <td>{{ grade.seq_average }}</td>
+                                    <td>19.00</td>
+                                    <td>17<sup class="font-weight-bold">th</sup></td>
+                                    <td>Very Good</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
                     {% endfor %}
-                    
-                    <!-- END POPULATE DATA-->
-                    
+
+
+
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;" colspan="6">TOTAL: </td>
                         <td>28</td>
@@ -146,9 +162,9 @@
                     </tr>
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;" colspan="3">AVERAGE: </td>
-                        <td style="font-weight: 900;" colspan="4">11.82 </td>
+                        <td style="font-weight: 900;" colspan="4">{{ student.position }}</td>
                         <td>RANK:</td>
-                        <td style="font-weight: 900;">5<sup>em</sup> / 26</td>
+                        <td style="font-weight: 900;">{{ student.position }}<sup>th</sup> / 26</td>
                     </tr>
 
                     <tr>

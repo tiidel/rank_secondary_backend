@@ -569,14 +569,14 @@ class Student(models.Model):
 
             grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance)
 
-            for subject in subjects:
-                if subject.id not in existing_subjects:
-                    sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject)
+            # Add subjects that are not in the class
+            sequences = Sequence.objects.all()
+            for sequence in sequences:
+                for subject in subjects:
+                    sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject, sequence=sequence)
                     grade.grade_list.add(sts)
 
-
-
-
+            # Remove subjects that are no longer in the class
             if not self.studentclassrelation_set.filter(class_instance=class_instance).exists():
                 StudentClassRelation.objects.create(student=self, class_instance=class_instance)
 
@@ -592,11 +592,9 @@ class StudentSubjects(models.Model):
     
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
 
-    first_seq = models.IntegerField(_("First sequence grade"), default=0,validators=[MinValueValidator(0), MaxValueValidator(100)])
+    grade = models.FloatField(_("Grade"), default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
-    second_seq = models.IntegerField(_("Second sequence grade"), default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
-
-    terms = models.ForeignKey(Terms, on_delete=models.CASCADE, null=True, blank=True)
+    sequence = models.ForeignKey('school.Sequence', on_delete=models.CASCADE, null=True, blank=True)
 
     seq_average = models.FloatField(_("Average of sequence grades"), default=0, null=True, blank=True)
     
@@ -605,17 +603,30 @@ class StudentSubjects(models.Model):
         verbose_name = _("Student Subject")
         
         verbose_name_plural = _("Student Subjects")
-        
+
+     
     def __str__(self):
-        return f" {self.student.user.first_name} {self.student.user.last_name} - {self.subject.name}"
-    
+        return f"{self.student.user.first_name} {self.student.user.last_name} - {self.subject.name} - {self.sequence.name}"
+
     def save(self, *args, **kwargs):
-        """ --- Calculate the average of the sequence grades ---"""
-        if self.first_seq is not None and self.second_seq is not None:
-            self.seq_average = (self.first_seq + self.second_seq) / 2.0
-        else:
-            self.seq_average = None
+        """Calculate the average grade for the sequence"""
         super().save(*args, **kwargs)
+        
+
+    
+
+        # # Calculate average grade only if there's a sequence associated
+        # if self.sequence:
+        #     # Get all grades for the same student, subject, and sequence
+        #     grades = StudentSubjects.objects.filter(student=self.student, subject=self.subject, sequence=self.sequence)
+        #     num_grades = grades.count()
+            
+        #     # Calculate sum of grades
+        #     total_grade = sum(grade.grade for grade in grades)
+            
+        #     # Calculate average grade
+        #     self.seq_average = total_grade / num_grades if num_grades > 0 else 0
+        #     self.save(update_fields=['seq_average'])  # Save the average grade
 
 
 class Sequence(models.Model):
@@ -625,6 +636,8 @@ class Sequence(models.Model):
     start_date = models.DateField(_("Date sequence starts"), auto_now_add=True, null=True, blank=True)
     
     end_date = models.DateField(_("Date sequence ends"), auto_now=False, auto_now_add=False, null=True, blank=True)
+
+    term = models.ForeignKey(Terms, on_delete=models.CASCADE, related_name='sequences')
     
     class Meta:
         
@@ -632,12 +645,11 @@ class Sequence(models.Model):
         
         verbose_name_plural = _("Sequences")
         
-    
     def __str__(self):
         return self.name
     
     def save(self, *args, **kwargs):
-        if self.start_date > self.end_date:
+        if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValidationError("Start date must be before end date.")
         super().save(*args, **kwargs)
 
@@ -699,13 +711,13 @@ class Guardian(BaseModel):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ManyToManyField(Student, related_name='guardian_student_list' )
     
     type = models.CharField(_("guardian type e.g Mother, Aunty, cousin"), max_length=256,  choices=GuardianType.choices, blank=False, null=False)
     
-    alt_mail = models.EmailField(max_length=256, null=False, blank=False)
+    alt_mail = models.EmailField(max_length=256, null=True, blank=True)
     
-    city = models.CharField(_('City/town of residence of guardian'), max_length=256, null=False, blank=False)
+    city = models.CharField(_('City/town of residence of guardian'), max_length=256, null=True, blank=True)
     
     class Meta:
         
