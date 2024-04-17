@@ -15,6 +15,7 @@ from fcm_django.models import FCMDevice
 
 from core.serializers import LoginSerializer
 from core.user_groups import create_groups
+from tenant.serializers import DomainSerializer
 
 
 # from firebase_admin.messaging import Message
@@ -100,6 +101,21 @@ def tenant_exist_view(request):
     return Response({"message": "method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+# GET TENANTS
+@api_view(['GET'])
+def fetch_tenants(request):
+    if request.method == 'GET':
+
+        name = request.data.get('school_abr')
+
+        client = Domain.objects.all()
+        serializer = DomainSerializer(client, many=True)
+        print(serializer.data)
+       
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+    return Response({"message": "method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
 
 def generate_unique_string(length):
     letters = string.ascii_lowercase
@@ -114,7 +130,7 @@ def generate_unique_tenant_names(original_name):
         while True:
 
             unique_string = generate_unique_string(3)
-            tenant_name = f"{original_name}_{unique_string}"
+            tenant_name = f"{original_name}{unique_string}"
 
             try:
                 Client.objects.get(name=tenant_name)
