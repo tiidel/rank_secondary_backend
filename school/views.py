@@ -647,9 +647,12 @@ class ClassItemView(APIView):
 class InvitationView(APIView):
     serializer_class = InvitationSerializer
     
-    def send_invite_mail(self, data):
+    def send_invite_mail(self, data, tenant):
         context = {
-            'data': data
+            'data': data,
+            'school': tenant,
+            'code': data['invitation_code'],
+            'role': data['role']
         }
         sub={
             'email_subject': 'You have been invited to join our school',
@@ -673,7 +676,7 @@ class InvitationView(APIView):
             serializer = self.serializer_class(data=invitation)
             if serializer.is_valid():
                 serializer.save()
-                self.send_invite_mail(serializer.data)
+                self.send_invite_mail(serializer.data, request.tenant.schema_name)
                 serializers.append(serializer)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1161,6 +1164,8 @@ class StudentsView(APIView):
 
         request.data.pop('password', None)
         request.data.pop('email', None)
+        request.data.pop('date_of_birth', None)
+        request.data.pop('bio', None)
         request.data.pop('first_name', None)
         request.data.pop('last_name', None)
         request.data.pop('gender', None)
