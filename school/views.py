@@ -703,7 +703,8 @@ class InviteConfirmationView(APIView):
 
     def check_validity(self, slug):
         invitation = self.find_invitation(slug)
-
+        if not invitation:
+            return Response({"message": "Not a valid invitation"}, status=status.HTTP_400_BAD_REQUEST)
         if not invitation.is_expired():
             return invitation.role
         else: return False
@@ -730,7 +731,7 @@ class InviteConfirmationView(APIView):
         try:
             email = request.data.get('email')
             user_exist = User.objects.filter(email=email).first()
-            
+
             if user_exist:
                 return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -1625,6 +1626,19 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
 
 
 class PromoteStudentAPIView(APIView):
+
+    def generate_new_student_subjects(self, student, new_class):
+        subjects = new_class.subjects.all()
+        grade = Grade.objects.create(student=student, classroom=new_class)
+
+        sequences = Sequence.objects.all()
+        for sequence in sequences:
+            for subject in subjects:
+                sts = StudentSubjects.objects.create(student=self, subject=subject, sequence=sequence)
+                grade.grade_list.add(sts)
+        
+        grade.save()
+    
     def post(self, request, student_id, new_class_id):
         # Retrieve the student and new class instances
         student = get_object_or_404(Student, id=student_id)
@@ -1644,6 +1658,7 @@ class PromoteStudentAPIView(APIView):
         student.student_class = new_class
         student.save()
         
+        self.generate_new_student_subjects(student, new_class)
         # Optionally, you can perform additional actions here, such as updating the student's grade, position, etc.
         
         return Response({"message": "Student promoted to new class successfully",

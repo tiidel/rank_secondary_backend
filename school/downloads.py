@@ -1,9 +1,10 @@
 import io
+import csv
 import zipfile
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from rest_framework.decorators import api_view
-from .models import Grade, Student, Guardian, Staff, Subject
+from .models import Grade, Student, Guardian, Staff, Subject, Class, User
 from rest_framework.views import APIView, status, Response
 from wkhtmltopdf.views import PDFTemplateResponse
 
@@ -67,3 +68,45 @@ def download_staff_profile(request, staff_id):
         context=ctx,
         filename=f'{staff.user.first_name} {staff.user.last_name}.pdf'
     )
+
+
+
+@api_view(['GET'])
+def download_class_list(request, class_id):
+    cls = Class.objects.filter(id=class_id).first()
+
+    if not cls:
+        return Response({'message': 'Class not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{cls.level.name} {cls.class_name}.csv"'
+    
+    
+    writer = csv.writer(response)
+    writer.writerow(['Full Name', 'Username', 'Email', 'Date Joined'])
+    
+    students = cls.students.all().order_by('user__first_name')
+    
+    for student in students:
+        writer.writerow([f'{student.user.first_name} {student.user.last_name}', student.user.username, student.user.email, student.user.created_at])
+
+    return response
+
+
+def download_users_as_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="users.csv"'
+
+    # Retrieve all users
+    users = User.objects.all()
+
+    # Write CSV headers
+    writer = csv.writer(response)
+    writer.writerow(['First Name', 'Last Name', 'Username', 'Email', 'Date Joined'])
+
+    # Write user data
+    for user in users:
+        writer.writerow([user.first_name, user.last_name, user.username, user.email, user.created_at])
+
+    return response

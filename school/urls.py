@@ -105,7 +105,9 @@ urlpatterns = [
     # REGISTRATION AND PROMOTION 
     path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),
     
-    # DOWNLOAD PROFILES
+    # DOWNLOAD CSVs
+    path('download-users-csv/', download_users_as_csv, name='download_users_csv'),
+    path('class_list/<str:class_id>/download/', download_class_list, name='download_class_list'),
 
 
 ]
