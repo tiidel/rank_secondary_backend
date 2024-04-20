@@ -1102,10 +1102,6 @@ class SubjectChangeInstructor(APIView):
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
 
 
-# class GuardianView(APIView):
-
-
-# class RegistrationView(APIView):
 
 
 class StudentsView(APIView):

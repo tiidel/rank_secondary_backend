@@ -319,8 +319,6 @@ class Event(models.Model):
     
 class Program(BaseModel):
     
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
-    
     events = models.ManyToManyField("Event", verbose_name=_("name"), null=True)
     
     academic_start = models.DateField(_("Date school starts"), default=timezone.now)
@@ -704,6 +702,8 @@ class Registration(BaseModel):
     installment = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
     
     is_registered = models.BooleanField(_("Given a school calendar, the date registration expires"), default=False)
+
+    year = models.ForeignKey(Program, on_delete=models.CASCADE, null=False)
 
 
 
