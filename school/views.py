@@ -1580,16 +1580,30 @@ def download_student_result_for_term(request, term_id, stud_id):
 
 
 class RegistrationListCreateAPIView(APIView):
+    serializer_class = StudentRegistrationSerializer
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         registrations = Registration.objects.all()
-        serializer = RegistrationSerializer(registrations, many=True)
+        serializer = RegistrationFetchSerializer(registrations, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = RegistrationSerializer(data=request.data)
+        active_program = Program.objects.filter(is_active=True).first()
+
+        if not active_program:
+            return Response({"error": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
+        
+       
+        request.data['year'] = active_program
+        request.data['receiver'] = request.user.id
+
+        serializer = self.serializer_class(data=request.data)
+        
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response( serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -1602,7 +1616,7 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
 
     def get(self, request, pk):
         registration = self.get_object(pk)
-        serializer = RegistrationSerializer(registration)
+        serializer = RegistrationFetchSerializer(registration)
         return Response(serializer.data)
 
     def put(self, request, pk):
@@ -1611,7 +1625,7 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response("serializer.errors", status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         registration = self.get_object(pk)
@@ -1662,7 +1676,6 @@ class PromoteStudentAPIView(APIView):
                          "new_class_id": new_class_id},
                         status=status.HTTP_200_OK)
     
-
 
 
 

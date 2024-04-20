@@ -2,6 +2,7 @@ from rest_framework.routers import DefaultRouter
 from .views import *
 from wkhtmltopdf.views import PDFTemplateView
 from .downloads import *
+from .analyticsApis import *
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -104,6 +105,12 @@ urlpatterns = [
 
     # REGISTRATION AND PROMOTION 
     path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),
+    path('register/', RegistrationListCreateAPIView.as_view(), name='promote_student'),
+    path('register/<str:pk>/', RegistrationRetrieveUpdateDestroyAPIView.as_view(), name='promote_student'),
+    path('analytics/registrations/', RegistrationAnalyticsAPIView.as_view(), name='analytics for registration'),
+    path('analytics/registrations/deep/', DeepRegistrationAnalytics.as_view(), name='deep analytics for registration'),
+    path('analytics/draw/', GraphDataAPIView.as_view(), name='deep analytics for registration'),
+    path('analytics/numbers/', NumbersAnalyticsView.as_view(), name='Dashboad numbers analytics'),
     
     # DOWNLOAD CSVs
     path('download-users-csv/', download_users_as_csv, name='download_users_csv'),

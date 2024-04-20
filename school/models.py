@@ -325,13 +325,15 @@ class Program(BaseModel):
     
     academic_end = models.DateField(_("Date school closes"), default=timezone.now)
     
-    is_active = models.BooleanField(_("Date program should terminate"), default=False)
+    is_active = models.BooleanField(_("Date program should terminate"), default=True)
 
     class Meta:
         
         verbose_name = _("Program")
         
         verbose_name_plural = _("Programs")
+
+        ordering = ['-academic_end']
         
     
     def __str__(self):
@@ -363,6 +365,10 @@ class Program(BaseModel):
         if self.academic_end < timezone.now().date():
             self.is_active = False
             self.save()
+    
+    def is_currently_active(self):
+        today = timezone.now().date()
+        return self.academic_start <= today <= self.academic_end
 
 class PaymentDetail(models.Model):
     
