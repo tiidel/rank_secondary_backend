@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from tenant.models import Client, Domain
 from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import authenticate, login
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.core.exceptions import ObjectDoesNotExist
 import random
@@ -14,9 +16,12 @@ import json
 from fcm_django.models import FCMDevice
 
 from core.serializers import LoginSerializer
+from core.models import User, UserManager
 from core.user_groups import create_groups
 from tenant.serializers import DomainSerializer
-
+from django.contrib.auth.models import Group
+from django_tenants.utils import tenant_context
+from helper.workers import send_email_with_template
 
 # from firebase_admin.messaging import Message
 # from firebase_admin import messaging
@@ -30,6 +35,14 @@ def not_found(request, exception):
     return render(request, 'not_found.html')
 
 
+def generate_random_password():
+    return User.objects.make_random_password()
+
+def assign_user_to_group( user, role):
+    group = Group.objects.get(name__iexact=role)
+    if group:
+        return group.user_set.add(user)
+    
 # CREATE TENANT VIEW
 @api_view(['POST', 'GET'])
 @permission_classes([IsAuthenticated])
@@ -45,17 +58,13 @@ def create_tenant_view(request):
         except Client.DoesNotExist:
             user = request.user
             
-            # Create new tenant and domain with given school name and abbreviation
             new_tenant = Client(schema_name=tenant_name, name=school_name)
             new_tenant.save()
 
-            new_domain = Domain(tenant=new_tenant, domain=f'{tenant_name}.rank.azureservices.net' )
+            new_domain = Domain(tenant=new_tenant, domain=f'{tenant_name}.localhost' )
             new_domain.save()
 
-            # Create groups for this user
-            create_groups()
 
-            # Append schools list for that user in the shared user module
             user_school = {
                 "tenant": tenant_name,
                 "school": school_name
@@ -63,14 +72,53 @@ def create_tenant_view(request):
             user.schools.append(user_school)
             user.save()
 
+            admin_created = False
+            tenant_user = None
+            with tenant_context(new_tenant):
+                create_groups()
+                generated_password = generate_random_password()
+
+
+                create_admin = {
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                    "password": generated_password,
+                    "is_staff": True,
+                    "is_active": True,
+                    "is_superuser": True,
+                    "email_verified": True,
+                    "schools": user.schools,
+                    "school_code": tenant_name
+                }
+
+                
+                tenant_user = User.objects.create_superuser(**create_admin)
+                admin_created = True if tenant_user else False
+                user = authenticate(request, username=tenant_user.email, password=generated_password)
+
+                if user is not None:
+                    login(request, user)
+                    ctx = {
+                        "user": user,
+                        "password": generated_password
+                    }
+                    data = { 'email_subject': 'Congratulations. your school has been registered'}
+                    send_email_with_template(data, context=ctx, template_name='school_created.html', recipient_list=[user.email])
+
             user_serializer = LoginSerializer(user)
             serialized_user = user_serializer.data
+            
+            refresh = RefreshToken.for_user(tenant_user)
 
             response = {
                 "domain": str(new_domain),
                 "tenant": str(new_tenant),
                 "school_name": school_name,
-                "owner": serialized_user
+                "owner": serialized_user,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                "admin_created": admin_created
             }
 
             return Response({"data": response}, status=status.HTTP_201_CREATED)
