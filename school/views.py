@@ -1390,6 +1390,9 @@ class GradeStudentForSubjectAPIView(APIView):
     def post(self, request, term, subject):
         term = Terms.objects.filter(id=term).first()
 
+        if not term:
+            return Response({"message": "term not found"}, status=status.HTTP_400_BAD_REQUEST)
+
         # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
         if not term.term_validated and datetime.now().date() < term.end_date:
             return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
@@ -1431,30 +1434,78 @@ class GradeStudentForAllSubjectAPIView(APIView):
     
     serializer_class = GradeSerializer
 
-    def get(self, request, term_id, student_id):
-        student_marks = Grade.objects.filter(term=term_id, student=student_id)
-        serializer = self.serializer_class(student_marks, many=True)
+    def calculate_adjusted_student_average(self, grade_data):
+        subject_grades = {}
         
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Accumulate all grades by subject and sequence
+        for grade_item in grade_data["grade_list"]:
+            subject_id = grade_item["subject"]["id"]
+            if subject_id not in subject_grades:
+                subject_grades[subject_id] = {
+                    "total": 0.0,
+                    "count": 0,
+                    "coefficient": grade_item["subject"]["sub_coef"]
+                }
+            
+            subject_grades[subject_id]["total"] += grade_item["grade"]
+            subject_grades[subject_id]["count"] += 1
+
+        # Compute the weighted average for each subject and aggregate
+        weighted_sum = 0
+        coefficient_sum = 0
+        for subject_id, details in subject_grades.items():
+            if details["count"] > 0:
+                subject_average = details["total"] / details["count"]
+                weighted_average = subject_average * details["coefficient"]
+                weighted_sum += weighted_average
+                coefficient_sum += details["coefficient"]
+
+        # Calculate the final average normalized to a scale of 20
+        if coefficient_sum > 0:
+            final_average = (weighted_sum / coefficient_sum) 
+
+        else:
+            final_average = 0
+
+        return final_average
+
+
+    def get(self, request, cls_id, student_id):
+        term = request.GET.get('term')
+
+        if not term:
+            return Response({"message": "Please provide the term in the query '?term=term'"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        student_marks = Grade.objects.filter(classroom=cls_id, student=student_id, term=term).first()
+        serializer = self.serializer_class(student_marks)
+        
+        avg = self.calculate_adjusted_student_average(serializer.data)
+
+        student_marks.average = avg
+        student_marks.save()
+
+        return Response({'grade': serializer.data, 'average': avg}, status=status.HTTP_200_OK)
     
 
-    def post(self, request, term_id, student_id):
-        term = Terms.objects.filter(id=term_id).first()
+    def post(self, request, cls_id, student_id):
+        cls = Class.objects.filter(id=cls_id).first()
 
-        # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
-        if not term.term_validated and datetime.now().date() < term.start_date:
-            return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
-        
+        if not cls:
+            return Response({"message": "Class not found"}, status=status.HTTP_400_BAD_REQUEST)
+
         marks_data = request.data
         updated_grades = {}
         invalid_subjects = []
 
         for data in marks_data:
+            stud_id = data.get('student')
             subject_id = data.get('subject')
+            sequence = data.get('sequence')
 
             try:
-                student_grade = StudentSubjects.objects.get(terms=term_id, student=student_id, subject=subject_id)
-                serializer = self.serializer_class(instance=student_grade, data=data, partial=True)
+                student_grade = StudentSubjects.objects.get(sequence=sequence, student=stud_id, subject=subject_id)
+                print(student_grade)
+                serializer = StudentSubjectSerializer(instance=student_grade, data=data, partial=True)
 
                 if serializer.is_valid():
                     serializer.save()
@@ -1464,7 +1515,7 @@ class GradeStudentForAllSubjectAPIView(APIView):
                     invalid_subjects.append({"subject": subject_id, "errors": serializer.errors})
 
             except StudentSubjects.DoesNotExist:
-                invalid_subjects.append({"subject": subject_id, "message": f"Student {student_id} not found for the given subject and term"})
+                invalid_subjects.append({"subject": subject_id, "message": f"Student {stud_id} not found for the given subject and term"})
 
         if invalid_subjects:
             return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
@@ -1472,6 +1523,38 @@ class GradeStudentForAllSubjectAPIView(APIView):
         else:
             return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
         
+
+
+class StudentResultsView(APIView):
+    def get(self, request):
+        term = request.GET.get('term')
+        student = request.GET.get('student')
+        cls = request.GET.get('class')
+
+        sequences = Sequence.objects.filter(term=term)
+        
+        if not sequences:
+            return Response({"message": "unable to find sequences for the given term"}, status=status.HTTP_404_NOT_FOUND)
+        
+        student_grade = Grade.objects.filter(classroom=cls, student=student).first()
+        grades = student_grade.grade_list.filter(sequence__in=sequences)
+        serializer = StudentSubjectsSerializer(grades, many=True)
+
+        data = serializer.data
+        subject_data = defaultdict(list)
+
+        for entry in data:
+            subject = entry["subject"]["name"]
+            sequence = entry["sequence"]
+            sequences = {
+                sequence: entry
+            }
+            subject_data[subject].append(sequences)
+        
+
+        return Response(subject_data)
+
+
 
 class JobApplicantsView(APIView):
 
@@ -1554,28 +1637,7 @@ def download_student_result(request, stud_id):
     # print(student_grades)
     # return Response({"hello"})
 
-@api_view(['GET'])
-def download_student_result_for_term(request, term_id, stud_id):
-    student_grades = get_object_or_404(Grade, student=stud_id, term=term_id)
 
-    grade_list = student_grades.grade_list.all()
-
-     # Organize the grades by sequences
-    grades_by_sequence = {}
-    for grade in grade_list:
-        sequence_id = grade.sequence.id
-        if sequence_id not in grades_by_sequence:
-            grades_by_sequence[sequence_id] = []
-        grades_by_sequence[sequence_id].append(grade)
-
-    ctx = {'grades_by_sequence': grades_by_sequence, 'student': student_grades.student}
-    
-    return PDFTemplateResponse(
-        request=request,
-        template='results/template-one.html',
-        context=ctx,
-        filename='report_card.pdf'
-    )
 
 
 

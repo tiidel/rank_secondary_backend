@@ -569,22 +569,29 @@ class Student(models.Model):
 
             existing_subjects = set(self.studentsubjects_set.values_list('subject_id', flat=True))
 
+            terms = Terms.objects.all()
+            for term in terms:
+                sequences = Sequence.objects.filter(term=term)
+                grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance, term=term)
+                for sequence in sequences:
+                    for subject in class_instance.subjects.all():
+                        sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject, sequence=sequence)
+                        if sts.subject.id not in existing_subjects:
+                            sts.save()
+                        grade.grade_list.add(sts)
+                
+                if not grade.position:
+                    grade.position = self.student_class.studentclassrelation_set.filter(class_instance=class_instance).count()
+                
+
+                grade.save()
+                            
             subjects = class_instance.subjects.all()
-
-            grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance)
-
-            # Add subjects that are not in the class
-            sequences = Sequence.objects.all()
-            for sequence in sequences:
-                for subject in subjects:
-                    sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject, sequence=sequence)
-                    grade.grade_list.add(sts)
-
+            
             # Remove subjects that are no longer in the class
             if not self.studentclassrelation_set.filter(class_instance=class_instance).exists():
                 StudentClassRelation.objects.create(student=self, class_instance=class_instance)
 
-            grade.save()
             
 
 

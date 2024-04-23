@@ -73,8 +73,9 @@ urlpatterns = [
     path('subjects/grade/<str:subj_id>/', GradeStudentView.as_view(), name='grade_student'),
     
     # GRADES
+    path('results/', StudentResultsView.as_view(), name='grade_student'),
     path('grades/<str:term>/<str:subject>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
-    path('grades/student/<str:term_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
+    path('grades/student/<str:cls_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
     # GUARDIANS
     path('guardians/', GuardiansView.as_view(), name="guardian_view"),
@@ -95,7 +96,7 @@ urlpatterns = [
     # DOWNLOAD 
     # path('generate-pdf/', generate_pdf, name='generate_pdf'),
     path('student_result/<str:stud_id>/download', download_student_result, name='download_student_result'),
-    path('student_result/<str:term_id>/<str:stud_id>/download', download_student_result_for_term, name='download_student_result'),
+    path('student_result/<str:cls_id>/<str:term_id>/<str:stud_id>/download', download_student_result_for_term, name='download_student_result'),
     path('zip/<str:cls>/<str:term>/', download_zip, name='download_zip'),
     path('pdf/', PDFTemplateView.as_view(template_name='results/template_one.html',
         filename='my_pdf.pdf'), name='pdf'),

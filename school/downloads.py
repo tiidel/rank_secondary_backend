@@ -7,6 +7,9 @@ from rest_framework.decorators import api_view
 from .models import Grade, Student, Guardian, Staff, Subject, Class, User
 from rest_framework.views import APIView, status, Response
 from wkhtmltopdf.views import PDFTemplateResponse
+from collections import defaultdict
+
+from django.shortcuts import get_object_or_404
 
 @api_view(['GET'])
 def download_zip(request, cls, term):
@@ -110,3 +113,36 @@ def download_users_as_csv(request):
         writer.writerow([user.first_name, user.last_name, user.username, user.email, user.created_at])
 
     return response
+
+@api_view(['GET'])
+def download_student_result_for_term(request,cls_id, term_id, stud_id):
+    student_grades = get_object_or_404(Grade, classroom=cls_id, student=stud_id, term=term_id)
+    
+    grade_list = student_grades.grade_list.all()
+
+    grades_by_sequence = {}
+    for grade in grade_list:
+        sequence_id = grade.sequence.id
+        if sequence_id not in grades_by_sequence:
+            grades_by_sequence[sequence_id] = []
+
+
+    subject_data = defaultdict(list)
+
+    for entry in grade_list:
+        subject = entry.subject.name
+        sequence = entry.sequence
+        sequences = {
+            sequence: entry
+        }
+        subject_data[subject].append(entry)
+
+    ctx = {'grades_by_sequence': grades_by_sequence, 'results': dict(subject_data), 'student': student_grades.student}
+    
+    return PDFTemplateResponse(
+        request=request,
+        template='results/template-one.html',
+        context=ctx,
+        filename='report_card.pdf'
+    )
+    return Response({'test response. downloading student data'})
