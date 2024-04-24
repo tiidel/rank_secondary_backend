@@ -1,9 +1,10 @@
 from django.db import models
-from datetime import date
+from datetime import date, datetime
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from core.models import User
+
 
 from django.utils import timezone, text, crypto
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
@@ -350,7 +351,7 @@ class Program(BaseModel):
     
     def save(self, *args, **kwargs):
         self.clean()
-        if self.academic_end < timezone.now().date():
+        if self.academic_end < timezone.localdate():
             self.is_active = False
         elif self.academic_end < self.academic_start + timezone.timedelta(days=30):
             raise ValidationError("End date must be at least 1 month after start date.")
