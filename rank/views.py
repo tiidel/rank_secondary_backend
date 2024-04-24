@@ -22,6 +22,7 @@ from tenant.serializers import DomainSerializer
 from django.contrib.auth.models import Group
 from django_tenants.utils import tenant_context
 from helper.workers import send_email_with_template
+from helper.helper import CLIENT_URL
 
 # from firebase_admin.messaging import Message
 # from firebase_admin import messaging
@@ -110,7 +111,7 @@ def create_tenant_view(request):
             serialized_user = user_serializer.data
             
             refresh = RefreshToken.for_user(tenant_user)
-
+            server_url = f"https://{tenant_name}.{CLIENT_URL}"
             response = {
                 "domain": str(new_domain),
                 "tenant": str(new_tenant),
@@ -118,7 +119,9 @@ def create_tenant_view(request):
                 "owner": serialized_user,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
-                "admin_created": admin_created
+                "admin_created": admin_created,
+                "server": tenant_name,
+                "server_url": server_url
             }
 
             return Response({"data": response}, status=status.HTTP_201_CREATED)
