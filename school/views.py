@@ -356,12 +356,13 @@ class TermAPIView(APIView):
             else:
                 errors.append(serializer.errors)
 
-        year = self.create_school_program(min_start_date, max_end_date)
+        print(min_start_date, max_end_date)
+        # year = self.create_school_program(min_start_date, max_end_date)
 
         if errors:
             return Response({"errors": errors, "created_terms": created_terms}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"year": year, "terms": created_terms}, status=status.HTTP_201_CREATED)
+            return Response({"year": "year", "terms": created_terms}, status=status.HTTP_201_CREATED)
 
 
 

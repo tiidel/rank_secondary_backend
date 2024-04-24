@@ -337,9 +337,6 @@ class Program(BaseModel):
         ordering = ['-academic_end']
         
     
-    def __str__(self):
-        return f"{self.academic_start.year} - {self.academic_end.year} "
-    
     def clean(self):
         if self.academic_start >= self.academic_end:
             raise ValidationError("Start date must be before end date.")
@@ -350,12 +347,17 @@ class Program(BaseModel):
             raise ValidationError("Programs cannot overlap with each other.")
     
     def save(self, *args, **kwargs):
-        self.clean()
-        if self.academic_end < timezone.localdate():
-            self.is_active = False
-        elif self.academic_end < self.academic_start + timezone.timedelta(days=30):
-            raise ValidationError("End date must be at least 1 month after start date.")
+        # self.clean()
+        print(self.academic_end)
+        # if self.academic_end < timezone.localdate():
+        #     self.is_active = False
+        # elif self.academic_end < self.academic_start + timezone.timedelta(days=30):
+        #     raise ValidationError("End date must be at least 1 month after start date.")
         super().save(*args, **kwargs)
+
+    
+    def __str__(self):
+        return f"{self.academic_start.year} - {self.academic_end.year} "
 
     def update_fields(self, **kwargs):
         for key, value in kwargs.items():
