@@ -347,12 +347,7 @@ class Program(BaseModel):
             raise ValidationError("Programs cannot overlap with each other.")
     
     def save(self, *args, **kwargs):
-        # self.clean()
-        print(self.academic_end)
-        # if self.academic_end < timezone.localdate():
-        #     self.is_active = False
-        # elif self.academic_end < self.academic_start + timezone.timedelta(days=30):
-        #     raise ValidationError("End date must be at least 1 month after start date.")
+        self.clean()
         super().save(*args, **kwargs)
 
     
@@ -707,19 +702,77 @@ class Registration(BaseModel):
     
     fee_type = models.CharField(max_length=15,blank=True, null=True)
     
-    amount = models.IntegerField()
-    
-    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
-    
-    depositor = models.CharField(_("Names of user paying the fees"), max_length=20, blank=True, null=True)
-    
     is_complete = models.BooleanField(default=False)
+
+    expected_ammount = models.IntegerField(_("The amount student is expected to pay for the class"))
+
+    payed_ammount = models.IntegerField(_("Money student has actually paid for the school year"), default=0)
     
-    installment = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
+    registration_status = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
+
+    payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
     
     is_registered = models.BooleanField(_("Given a school calendar, the date registration expires"), default=False)
 
     year = models.ForeignKey(Program, on_delete=models.CASCADE, null=False)
+
+    registration_date = models.DateField( auto_now=True)
+
+    registration_expiry_date = models.DateField()
+
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        
+        verbose_name = _("Registration")
+        
+        verbose_name_plural = _("Registrations")
+
+    def __str__(self):
+        return f"{self.student.user.email} {self.registration_status}"
+
+
+class Payment(models.Model):
+
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+
+    installment_number = models.IntegerField()
+
+    amount = models.IntegerField()
+
+    payment_date = models.DateField()
+
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+
+    payment_status = models.CharField(max_length=20, blank=True, null=True)
+
+    is_complete = models.BooleanField(default=False)
+
+    ### NULLABLES ###
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
+
+    depositor = models.CharField(max_length=20, blank=True, null=True)
+    
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+
+    payment_gateway = models.CharField(max_length=50, blank=True, null=True)
+
+    currency = models.CharField(max_length=3, blank=True, null=True)
+
+    reference_number = models.CharField(max_length=50, blank=True, null=True)
+
+    payment_confirmation_date = models.DateField(blank=True, null=True)
+
+    notes = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        
+        verbose_name = _("Fee")
+        
+        verbose_name_plural = _("Fees")
+
+    def __str__(self):
+        return f"{self.transaction_id} {self.amount}"
 
 
 

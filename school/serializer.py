@@ -157,7 +157,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 class RegistrationFetchSerializer(serializers.ModelSerializer):
     student = StudentSerializer()
-    receiver = LoginSerializer()
     year = ProgramSerializer()
     class Meta:
         model = Registration

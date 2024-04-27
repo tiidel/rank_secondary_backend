@@ -17,6 +17,7 @@ from django.db.models import Q
 from helper.workers import *
 from core.models import User
 from core.serializers import LoginSerializer
+from .payments import flutterwave_verify_transaction
 
 from rest_framework import generics
 from rest_framework import viewsets
@@ -292,7 +293,7 @@ class TermAPIView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
     
     def create_school_program(self, start_date, end_date):
-        program = Program.objects.create(academic_start=start_date, academic_end=end_date)
+        program = Program.objects.create(academic_start=str(start_date), academic_end=str(end_date))
         serializer = ProgramSerializer(program)
         return serializer.data 
     
@@ -356,13 +357,18 @@ class TermAPIView(APIView):
             else:
                 errors.append(serializer.errors)
 
-        print(min_start_date, max_end_date)
-        # year = self.create_school_program(min_start_date, max_end_date)
+        print('-------------------------------')
+        print(min_start_date , max_end_date)
+        print('-------------------------------')
+        
+        year = None
+        if min_start_date and max_end_date:
+            year = self.create_school_program(min_start_date or start_date, max_end_date or end_date)
 
         if errors:
             return Response({"errors": errors, "created_terms": created_terms}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"year": "year", "terms": created_terms}, status=status.HTTP_201_CREATED)
+            return Response({"year": year, "terms": created_terms}, status=status.HTTP_201_CREATED)
 
 
 
@@ -1549,7 +1555,7 @@ class GradeStudentForAllSubjectAPIView(APIView):
                 invalid_subjects.append({"subject": subject_id, "message": f"Student {stud_id} not found for the given subject and term"})
 
         if invalid_subjects:
-            return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_206_PARTIAL_CONTENT)
         
         else:
             return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
@@ -1563,7 +1569,7 @@ class StudentResultsView(APIView):
         cls = request.GET.get('class')
 
         sequences = Sequence.objects.filter(term=term)
-        
+        sequence_list = SequenceSerializer(sequences, many=True).data
         if not sequences:
             return Response({"message": "unable to find sequences for the given term"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -1578,12 +1584,13 @@ class StudentResultsView(APIView):
             subject = entry["subject"]["name"]
             sequence = entry["sequence"]
             sequences = {
-                sequence: entry
+                "id": entry["sequence"],
+                "sequence": entry
             }
             subject_data[subject].append(sequences)
         
 
-        return Response(subject_data)
+        return Response({"sequences": sequence_list, "grades": subject_data})
 
 
 
@@ -1677,7 +1684,7 @@ class RegistrationListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        registrations = Registration.objects.all()
+        registrations = Registration.objects.filter(is_deleted=False)
         serializer = RegistrationFetchSerializer(registrations, many=True)
         return Response(serializer.data)
 
@@ -1772,6 +1779,42 @@ class PromoteStudentAPIView(APIView):
 
 
 
+class RegisterPaymentAPIView(APIView):
+    def post(self, request):
+        data = request.data
+        amount = data.get('amount')
+        transaction_id = data.get('transaction_id')
+        registration_id = data.get('registration_id') 
+        
+        print(transaction_id)
+        # Validate payment data
+        if not (amount and transaction_id and registration_id):
+            return Response({'error': 'Incomplete payment data'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        registration = None
+        try:
+            registration = Registration.objects.get(id=registration_id)
+        except Registration.DoesNotExist:
+            return Response({'error': 'Invalid registration ID'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Perform transaction verification with Flutterwave (Pseudo code)
+        response = flutterwave_verify_transaction(transaction_id)
+        print('response from fluterwave......................')
+        print(response)
+        # if response.status_code == 200:
+        #     transaction_data = response.json()
+        #     # Check if the transaction is successful and the amount matches
+        
+        # Create a new payment
+        # payment = Payment.objects.create(
+        #     amount=amount,
+        #     transaction_id=transaction_id,
+        #     registration=registration,
+        # )
+        
+        # Update registration status or perform other actions as needed
+        
+        return Response({'success': 'Payment registered successfully'})
 
 
 # @api_view(['GET'])

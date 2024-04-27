@@ -104,6 +104,9 @@ urlpatterns = [
     path('student_profile/<str:stud_id>/download/', download_student_profile, name='download_student_profile'),
     path('staff_profile/<str:staff_id>/download/', download_staff_profile, name='download_staff_profile'),
 
+    #PAYMENTS
+    path('fee-payments/', RegisterPaymentAPIView.as_view(), name='register_payment'),
+
     # REGISTRATION AND PROMOTION 
     path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),
     path('register/', RegistrationListCreateAPIView.as_view(), name='promote_student'),
