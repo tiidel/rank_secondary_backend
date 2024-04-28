@@ -219,6 +219,52 @@ class SchoolEventUpdateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ClassFeeView(APIView):
+    serializer_class = ClassFeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        clss = ClassFees.objects.all()
+        serializer = self.serializer_class(clss, many=True)
+    
+        return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = self.serializer_class(data = request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ClassFeeUpdateView(APIView):
+    serializer_class = ClassFeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, id):
+        class_fee = ClassFees.objects.filter(id=id).first()
+        if not class_fee:
+            return Response({"message": "Invalid request"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        serializer = self.serializer_class(class_fee, data = request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, id):
+        class_fee = ClassFees.objects.filter(id=id).first()
+        if not class_fee:
+            return Response({"message": "Invalid request"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        serializer = self.serializer_class(class_fee)
+        return Response(serializer.data)
+        
+    def delete(self, request, id):
+        class_fee = ClassFees.objects.filter(id=id).first()
+        if not class_fee:
+            return Response({"message": "Invalid request"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        class_fee.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SchoolView(APIView):
     """
@@ -241,7 +287,7 @@ class SchoolView(APIView):
             serializers.save()
             return Response(serializers.data, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializers.errors, status=status.HTTP_201_CREATED)
+            return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         pass

@@ -30,7 +30,11 @@ class ProgramSerializer(serializers.ModelSerializer):
         model = Program
         fields = '__all__'
         
- 
+class ClassFeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassFees
+        fields = '__all__'
+
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event

@@ -426,6 +426,25 @@ class StudentClassRelation(models.Model):
 
     grade = models.CharField(_("Grade of student"), max_length=10, null=True, blank=True)
 
+class ClassFees(models.Model):
+    cls =  models.ForeignKey(Class, on_delete=models.CASCADE)
+
+    fee_amount = models.IntegerField(_("Total amount of money to be payed by students in this class"))
+
+    first_installment = models.IntegerField(_("First installment of this fee"))
+
+    second_installment = models.IntegerField(_("Second installment of this fee"), null=True, blank=True)
+
+    third_installment = models.IntegerField(_("Third installment of this fee"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("class Fee"),
+        verbose_name_plural = _("class Fees")
+
+    def __str__(self):
+        return f"Class {cls.class_name} - {fee_amount}"
+
+    
 
 class Staff(BaseModel):
     

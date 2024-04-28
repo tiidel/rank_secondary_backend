@@ -44,6 +44,8 @@ urlpatterns = [
     
     #CLASSES
     path('classes/', ClassView.as_view(), name="classes"),
+    path('classes/fees/', ClassFeeView.as_view(), name="classes"),
+    path('classes/fees/<str:id>/', ClassFeeUpdateView.as_view(), name="classes"),
     path('classes/<int:class_id>/', ClassItemView.as_view(), name="classes"),
     path('classes/<int:class_id>/instructor/', ClassInstructor.as_view(), name="class_instructor"),
 
