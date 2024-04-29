@@ -96,7 +96,7 @@ class Terms(models.Model):
     
     term_name = models.CharField(_("Name of the term e.g first term, second term"), max_length=100, null=False, blank=False)
     
-    start_date = models.DateField(_("Date term starts"), auto_now_add=True)
+    start_date = models.DateField(_("Date term starts"), auto_now_add=False)
     
     end_date = models.DateField(_("Date term ends"), auto_now=False, auto_now_add=False)
 
@@ -426,6 +426,7 @@ class StudentClassRelation(models.Model):
 
     grade = models.CharField(_("Grade of student"), max_length=10, null=True, blank=True)
 
+
 class ClassFees(models.Model):
     cls =  models.ForeignKey(Class, on_delete=models.CASCADE)
 
@@ -720,7 +721,11 @@ class Registration(BaseModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     
     fee_type = models.CharField(max_length=15,blank=True, null=True)
+
+    transaction_count = models.IntegerField(default=0)
     
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+
     is_complete = models.BooleanField(default=False)
 
     expected_ammount = models.IntegerField(_("The amount student is expected to pay for the class"))
@@ -749,6 +754,21 @@ class Registration(BaseModel):
 
     def __str__(self):
         return f"{self.student.user.email} {self.registration_status}"
+
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            self.transaction_id = self.generate_transaction_id()
+
+        super().save(*args, **kwargs)
+
+    def generate_transaction_id(self):
+        current_date = timezone.now().date()
+
+        self.transaction_count += 1
+
+        transaction_id = f'Rank{current_date.strftime("%Y%m%d")}{self.transaction_count + 1:09d}'
+        
+        return transaction_id
 
 
 class Payment(models.Model):

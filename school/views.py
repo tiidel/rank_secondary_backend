@@ -367,9 +367,9 @@ class TermAPIView(APIView):
                 Q(start_date__lte=start_date, end_date__gte=end_date)
             )
 
-            if overlapping_terms.exists():
-                errors.append({"message": "Term overlaps with existing term"})
-                continue
+            # if overlapping_terms.exists():
+            #     errors.append({"message": "Term overlaps with existing term"})
+            #     continue
 
             school_name = term_data.pop('school', None)
             if not school_name:
@@ -454,14 +454,24 @@ class SequenceView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of sequence data"}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+        serializers = []
+        
+        for sequence in request.data:
+            serializer = self.serializer_class(data=sequence)
+
+            if serializer.is_valid():
+                serializer.save()
+                serializers.append(serializer)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
     
-    
-            
+
 #DEPARTMENT  
 class DepartementView(APIView):
     serializer_class = DepartmentSerializer
@@ -1721,7 +1731,48 @@ def download_student_result(request, stud_id):
     # print(student_grades)
     # return Response({"hello"})
 
+class RegisterStudentAPIView(APIView):
+    serializer_class = StudentRegistrationSerializer
 
+    def get(self, request, stud_id):
+        student = Student.objects.filter(id=stud_id).first()
+        if not student:
+            return Response({"message": "No student found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        cls_reg = ClassFees.objects.filter(cls=student.student_class).first()
+        if not cls_reg:
+            return Response({"message": "Fees for this class has not been set"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        
+        active_program = Program.objects.filter(is_active=True).first()
+        if not active_program:
+            return Response({"message": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
+
+        reg_exist = Registration.objects.filter(student=student, year=active_program).first()
+        if reg_exist:
+            transaction_id = reg_exist.generate_transaction_id()
+            reg_exist.transaction_id = transaction_id
+            print('new transaction id is ', reg_exist.transaction_id)
+            reg_exist.save()
+            
+            serializer = self.serializer_class(reg_exist)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        reg_obj = {
+            "student": student,
+            "year": active_program,
+            "expected_amount": cls_reg.fee_amount,
+            "registration_status": "none",
+            "registration_expiry_date": active_program.academic_end,
+        }
+
+        
+
+        serializer = self.serializer_class(data=reg_obj)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        return Response({"message": "Unable to resolve request at the moment", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 

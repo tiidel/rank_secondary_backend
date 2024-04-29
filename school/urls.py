@@ -112,7 +112,9 @@ urlpatterns = [
     # REGISTRATION AND PROMOTION 
     path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),
     path('register/', RegistrationListCreateAPIView.as_view(), name='promote_student'),
+    path('student/register/<str:stud_id>/', RegisterStudentAPIView.as_view(), name='promote_student'),
     path('register/<str:pk>/', RegistrationRetrieveUpdateDestroyAPIView.as_view(), name='promote_student'),
+    
     path('analytics/registrations/', RegistrationAnalyticsAPIView.as_view(), name='analytics for registration'),
     path('analytics/registrations/deep/', DeepRegistrationAnalytics.as_view(), name='deep analytics for registration'),
     path('analytics/draw/', GraphDataAPIView.as_view(), name='deep analytics for registration'),

@@ -1,10 +1,10 @@
-FROM python:3.8-alpine
+FROM surnet/alpine-python-wkhtmltopdf:3.9.2-0.12.6-full
 
 WORKDIR /rank
 
 ENV PYTHONUNBUFFERED=1
 
-# Install dependencies
+# Install system dependencies
 RUN apk update && apk add --no-cache \
     postgresql-client \
     gcc \
@@ -20,21 +20,18 @@ RUN apk update && apk add --no-cache \
     ttf-dejavu \
     ttf-droid \
     ttf-freefont \
-    ttf-liberation
+    ttf-liberation \
+    wget \
+    tar \
+    xz
 
-# Download and install wkhtmltox
-RUN wget -q -O /tmp/wkhtmltox.tar.xz "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.alpine-3.14-x86_64.tar.xz" && \
-    tar -xf /tmp/wkhtmltox.tar.xz -C /usr/local/ && \
-    ln -s /usr/local/wkhtmltox/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf && \
-    ln -s /usr/local/wkhtmltox/bin/wkhtmltoimage /usr/local/bin/wkhtmltoimage && \
-    rm /tmp/wkhtmltox.tar.xz
+    
 
 # Upgrade pip and setuptools
-RUN pip install --upgrade pip setuptools
+RUN pip install --no-cache-dir --upgrade pip setuptools
 
-# Install Python dependencies
 COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
