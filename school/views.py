@@ -1744,6 +1744,8 @@ class RegisterStudentAPIView(APIView):
             return Response({"message": "Fees for this class has not been set"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         
         active_program = Program.objects.filter(is_active=True).first()
+        cls_reg_serializer = ClassFeeSerializer(cls_reg)
+
         if not active_program:
             return Response({"message": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1751,11 +1753,10 @@ class RegisterStudentAPIView(APIView):
         if reg_exist:
             transaction_id = reg_exist.generate_transaction_id()
             reg_exist.transaction_id = transaction_id
-            print('new transaction id is ', reg_exist.transaction_id)
             reg_exist.save()
             
             serializer = self.serializer_class(reg_exist)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_200_OK)
 
         reg_obj = {
             "student": student,
@@ -1770,7 +1771,7 @@ class RegisterStudentAPIView(APIView):
         serializer = self.serializer_class(data=reg_obj)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({ "registration": serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_201_CREATED)
         
         return Response({"message": "Unable to resolve request at the moment", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
