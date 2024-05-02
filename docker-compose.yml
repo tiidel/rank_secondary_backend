@@ -27,7 +27,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=alph1
+      - POSTGRES_DB=rank
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=prodigy
 
