@@ -1320,7 +1320,7 @@ class GuardiansView(APIView):
     def generate_unique_email(self):
         prefix = 'parent'
         suffix = ''.join(random.choices(string.digits, k=4))
-        return f"{prefix}{suffix}@rank.com"
+        return f"{prefix}{suffix}@rankafrica.net"
     
 
     def assign_user_to_group(self, user, role):
