@@ -78,6 +78,8 @@ class LevelChoices(models.TextChoices):
 class FeeInstallments(models.TextChoices):
     """--- How school fees is payed ---"""
     
+    Non: Any = 'none', 'None'
+    
     First: Any = 'first', 'First'
     
     Second: Any = 'second', 'Second'

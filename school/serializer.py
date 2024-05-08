@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student, Timetable, Subject, Sequence, Grade, Department, School, PaymentDetail, Social, Level, Program, Staff, Registration, Guardian, Class, Invitation, Job, SchoolStaffApply, Teacher, Terms, StudentSubjects, Event
+from .models import *
 from core.serializers import LoginSerializer
 
 
@@ -30,7 +30,11 @@ class ProgramSerializer(serializers.ModelSerializer):
         model = Program
         fields = '__all__'
         
- 
+class ClassFeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassFees
+        fields = '__all__'
+
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
@@ -135,7 +139,7 @@ class StudentSubjectsSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentSubjects
         fields = '__all__'
-      
+
 
 class GuardianSerializer(serializers.ModelSerializer):
     subject = LoginSerializer()
@@ -154,9 +158,17 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registration
         fields = '__all__'
+
 class RegistrationFetchSerializer(serializers.ModelSerializer):
     student = StudentSerializer()
-    receiver = LoginSerializer()
+    year = ProgramSerializer()
+    class Meta:
+        model = Registration
+        fields = '__all__'
+
+
+
+class StudentRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registration
         fields = '__all__'

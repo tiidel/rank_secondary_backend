@@ -30,12 +30,20 @@ schema_view = get_schema_view(
 handler404 = not_found
 
 urlpatterns = [
+   #  TENANTS 
     path('api/v1/create-tenant/', create_tenant_view, name='TENANT_VIEW'),
+    path('api/v1/tenants/', fetch_tenants, name='TENANT_VIEW'),
     path('api/v1/tenant-exist/', tenant_exist_view, name='TENANT_VIEW'),
+
+   # INSTALLED APPS
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
     path('api/v1/', include('school.urls'), name='SCHOOL'),
     path('api/v1/commerce/', include('commerce.urls'), name='SCHOOL STORE'),
+
+   #  ADMIN
     path('admin/', admin.site.urls),
+
+   #  DOCUMENTATION
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('', index, name='index'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),

@@ -17,6 +17,7 @@ from django.db.models import Q
 from helper.workers import *
 from core.models import User
 from core.serializers import LoginSerializer
+from .payments import flutterwave_verify_transaction
 
 from rest_framework import generics
 from rest_framework import viewsets
@@ -218,6 +219,52 @@ class SchoolEventUpdateAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ClassFeeView(APIView):
+    serializer_class = ClassFeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        clss = ClassFees.objects.all()
+        serializer = self.serializer_class(clss, many=True)
+    
+        return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = self.serializer_class(data = request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ClassFeeUpdateView(APIView):
+    serializer_class = ClassFeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, id):
+        class_fee = ClassFees.objects.filter(id=id).first()
+        if not class_fee:
+            return Response({"message": "Invalid request"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        serializer = self.serializer_class(class_fee, data = request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, id):
+        class_fee = ClassFees.objects.filter(id=id).first()
+        if not class_fee:
+            return Response({"message": "Invalid request"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        serializer = self.serializer_class(class_fee)
+        return Response(serializer.data)
+        
+    def delete(self, request, id):
+        class_fee = ClassFees.objects.filter(id=id).first()
+        if not class_fee:
+            return Response({"message": "Invalid request"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        class_fee.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SchoolView(APIView):
     """
@@ -240,7 +287,7 @@ class SchoolView(APIView):
             serializers.save()
             return Response(serializers.data, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializers.errors, status=status.HTTP_201_CREATED)
+            return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         pass
@@ -266,6 +313,11 @@ class SchoolFilesView(APIView):
     
 
 # SCHOOL TERMS
+class TermManagerAPIView(APIView):
+    def post(self):
+        pass
+
+
 class TermAPIView(APIView):
     serializer_class = TermsSerializer
 
@@ -286,6 +338,11 @@ class TermAPIView(APIView):
 
         return Response(response_data, status=status.HTTP_200_OK)
     
+    def create_school_program(self, start_date, end_date):
+        program = Program.objects.create(academic_start=str(start_date), academic_end=str(end_date))
+        serializer = ProgramSerializer(program)
+        return serializer.data 
+    
     def post(self, request):
 
         if not isinstance(request.data, list):
@@ -293,11 +350,16 @@ class TermAPIView(APIView):
         
         created_terms = []
         errors = []
+        min_start_date = None
+        max_end_date = None
 
         for term_data in request.data:
             start_date = term_data.get('start_date')
             end_date = term_data.get('end_date')
-
+            start_date_str = term_data.get('start_date')
+            end_date_str = term_data.get('end_date')
+            
+            
             # Check if the new term overlaps with existing terms
             overlapping_terms = Terms.objects.filter(
                 Q(start_date__range=[start_date, end_date]) |
@@ -305,9 +367,9 @@ class TermAPIView(APIView):
                 Q(start_date__lte=start_date, end_date__gte=end_date)
             )
 
-            if overlapping_terms.exists():
-                errors.append({"message": "Term overlaps with existing term"})
-                continue
+            # if overlapping_terms.exists():
+            #     errors.append({"message": "Term overlaps with existing term"})
+            #     continue
 
             school_name = term_data.pop('school', None)
             if not school_name:
@@ -319,19 +381,40 @@ class TermAPIView(APIView):
             except School.DoesNotExist:
                 errors.append({"message": f"School with ID '{school_name}' does not exist"})
                 continue
+            
+            start_date_compare = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date_compare = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
+            # Update min_start_date if it's None or the current start_date is smaller
+            if min_start_date is None or start_date_compare < min_start_date:
+                min_start_date = start_date_compare
+
+            # Update max_end_date if it's None or the current end_date is larger
+            if max_end_date is None or end_date_compare > max_end_date:
+                max_end_date = end_date_compare
+            
+            
             term_data['school'] = school.id
+            
             serializer = self.serializer_class(data=term_data)
             if serializer.is_valid():
-                term = serializer.save()
+                serializer.save()
                 created_terms.append(serializer.data)
             else:
                 errors.append(serializer.errors)
 
+        print('-------------------------------')
+        print(min_start_date , max_end_date)
+        print('-------------------------------')
+        
+        year = None
+        if min_start_date and max_end_date:
+            year = self.create_school_program(min_start_date or start_date, max_end_date or end_date)
+
         if errors:
             return Response({"errors": errors, "created_terms": created_terms}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response(created_terms, status=status.HTTP_201_CREATED)
+            return Response({"year": year, "terms": created_terms}, status=status.HTTP_201_CREATED)
 
 
 
@@ -371,14 +454,24 @@ class SequenceView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of sequence data"}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+        serializers = []
+        
+        for sequence in request.data:
+            serializer = self.serializer_class(data=sequence)
+
+            if serializer.is_valid():
+                serializer.save()
+                serializers.append(serializer)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
     
-    
-            
+
 #DEPARTMENT  
 class DepartementView(APIView):
     serializer_class = DepartmentSerializer
@@ -647,9 +740,12 @@ class ClassItemView(APIView):
 class InvitationView(APIView):
     serializer_class = InvitationSerializer
     
-    def send_invite_mail(self, data):
+    def send_invite_mail(self, data, tenant):
         context = {
-            'data': data
+            'data': data,
+            'school': tenant,
+            'code': data['invitation_code'],
+            'role': data['role']
         }
         sub={
             'email_subject': 'You have been invited to join our school',
@@ -673,7 +769,7 @@ class InvitationView(APIView):
             serializer = self.serializer_class(data=invitation)
             if serializer.is_valid():
                 serializer.save()
-                self.send_invite_mail(serializer.data)
+                self.send_invite_mail(serializer.data, request.tenant.schema_name)
                 serializers.append(serializer)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -700,7 +796,8 @@ class InviteConfirmationView(APIView):
 
     def check_validity(self, slug):
         invitation = self.find_invitation(slug)
-
+        if not invitation:
+            return Response({"message": "Not a valid invitation"}, status=status.HTTP_400_BAD_REQUEST)
         if not invitation.is_expired():
             return invitation.role
         else: return False
@@ -727,7 +824,7 @@ class InviteConfirmationView(APIView):
         try:
             email = request.data.get('email')
             user_exist = User.objects.filter(email=email).first()
-            
+
             if user_exist:
                 return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -1098,10 +1195,6 @@ class SubjectChangeInstructor(APIView):
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
 
 
-# class GuardianView(APIView):
-
-
-# class RegistrationView(APIView):
 
 
 class StudentsView(APIView):
@@ -1161,6 +1254,8 @@ class StudentsView(APIView):
 
         request.data.pop('password', None)
         request.data.pop('email', None)
+        request.data.pop('date_of_birth', None)
+        request.data.pop('bio', None)
         request.data.pop('first_name', None)
         request.data.pop('last_name', None)
         request.data.pop('gender', None)
@@ -1225,7 +1320,7 @@ class GuardiansView(APIView):
     def generate_unique_email(self):
         prefix = 'parent'
         suffix = ''.join(random.choices(string.digits, k=4))
-        return f"{prefix}{suffix}@rank.com"
+        return f"{prefix}{suffix}@rankafrica.net"
     
 
     def assign_user_to_group(self, user, role):
@@ -1388,6 +1483,9 @@ class GradeStudentForSubjectAPIView(APIView):
     def post(self, request, term, subject):
         term = Terms.objects.filter(id=term).first()
 
+        if not term:
+            return Response({"message": "term not found"}, status=status.HTTP_400_BAD_REQUEST)
+
         # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
         if not term.term_validated and datetime.now().date() < term.end_date:
             return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
@@ -1429,30 +1527,78 @@ class GradeStudentForAllSubjectAPIView(APIView):
     
     serializer_class = GradeSerializer
 
-    def get(self, request, term_id, student_id):
-        student_marks = Grade.objects.filter(term=term_id, student=student_id)
-        serializer = self.serializer_class(student_marks, many=True)
+    def calculate_adjusted_student_average(self, grade_data):
+        subject_grades = {}
         
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Accumulate all grades by subject and sequence
+        for grade_item in grade_data["grade_list"]:
+            subject_id = grade_item["subject"]["id"]
+            if subject_id not in subject_grades:
+                subject_grades[subject_id] = {
+                    "total": 0.0,
+                    "count": 0,
+                    "coefficient": grade_item["subject"]["sub_coef"]
+                }
+            
+            subject_grades[subject_id]["total"] += grade_item["grade"]
+            subject_grades[subject_id]["count"] += 1
+
+        # Compute the weighted average for each subject and aggregate
+        weighted_sum = 0
+        coefficient_sum = 0
+        for subject_id, details in subject_grades.items():
+            if details["count"] > 0:
+                subject_average = details["total"] / details["count"]
+                weighted_average = subject_average * details["coefficient"]
+                weighted_sum += weighted_average
+                coefficient_sum += details["coefficient"]
+
+        # Calculate the final average normalized to a scale of 20
+        if coefficient_sum > 0:
+            final_average = (weighted_sum / coefficient_sum) 
+
+        else:
+            final_average = 0
+
+        return final_average
+
+
+    def get(self, request, cls_id, student_id):
+        term = request.GET.get('term')
+
+        if not term:
+            return Response({"message": "Please provide the term in the query '?term=term'"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        student_marks = Grade.objects.filter(classroom=cls_id, student=student_id, term=term).first()
+        serializer = self.serializer_class(student_marks)
+        
+        avg = self.calculate_adjusted_student_average(serializer.data)
+
+        student_marks.average = avg
+        student_marks.save()
+
+        return Response({'grade': serializer.data, 'average': avg}, status=status.HTTP_200_OK)
     
 
-    def post(self, request, term_id, student_id):
-        term = Terms.objects.filter(id=term_id).first()
+    def post(self, request, cls_id, student_id):
+        cls = Class.objects.filter(id=cls_id).first()
 
-        # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
-        if not term.term_validated and datetime.now().date() < term.start_date:
-            return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
-        
+        if not cls:
+            return Response({"message": "Class not found"}, status=status.HTTP_400_BAD_REQUEST)
+
         marks_data = request.data
         updated_grades = {}
         invalid_subjects = []
 
         for data in marks_data:
+            stud_id = data.get('student')
             subject_id = data.get('subject')
+            sequence = data.get('sequence')
 
             try:
-                student_grade = StudentSubjects.objects.get(terms=term_id, student=student_id, subject=subject_id)
-                serializer = self.serializer_class(instance=student_grade, data=data, partial=True)
+                student_grade = StudentSubjects.objects.get(sequence=sequence, student=stud_id, subject=subject_id)
+                print(student_grade)
+                serializer = StudentSubjectSerializer(instance=student_grade, data=data, partial=True)
 
                 if serializer.is_valid():
                     serializer.save()
@@ -1462,14 +1608,47 @@ class GradeStudentForAllSubjectAPIView(APIView):
                     invalid_subjects.append({"subject": subject_id, "errors": serializer.errors})
 
             except StudentSubjects.DoesNotExist:
-                invalid_subjects.append({"subject": subject_id, "message": f"Student {student_id} not found for the given subject and term"})
+                invalid_subjects.append({"subject": subject_id, "message": f"Student {stud_id} not found for the given subject and term"})
 
         if invalid_subjects:
-            return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_206_PARTIAL_CONTENT)
         
         else:
             return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
         
+
+
+class StudentResultsView(APIView):
+    def get(self, request):
+        term = request.GET.get('term')
+        student = request.GET.get('student')
+        cls = request.GET.get('class')
+
+        sequences = Sequence.objects.filter(term=term)
+        sequence_list = SequenceSerializer(sequences, many=True).data
+        if not sequences:
+            return Response({"message": "unable to find sequences for the given term"}, status=status.HTTP_404_NOT_FOUND)
+        
+        student_grade = Grade.objects.filter(classroom=cls, student=student).first()
+        grades = student_grade.grade_list.filter(sequence__in=sequences)
+        serializer = StudentSubjectsSerializer(grades, many=True)
+
+        data = serializer.data
+        subject_data = defaultdict(list)
+
+        for entry in data:
+            subject = entry["subject"]["name"]
+            sequence = entry["sequence"]
+            sequences = {
+                "id": entry["sequence"],
+                "sequence": entry
+            }
+            subject_data[subject].append(sequences)
+        
+
+        return Response({"sequences": sequence_list, "grades": subject_data})
+
+
 
 class JobApplicantsView(APIView):
 
@@ -1552,42 +1731,78 @@ def download_student_result(request, stud_id):
     # print(student_grades)
     # return Response({"hello"})
 
-@api_view(['GET'])
-def download_student_result_for_term(request, term_id, stud_id):
-    student_grades = get_object_or_404(Grade, student=stud_id, term=term_id)
+class RegisterStudentAPIView(APIView):
+    serializer_class = StudentRegistrationSerializer
 
-    grade_list = student_grades.grade_list.all()
+    def get(self, request, stud_id):
+        student = Student.objects.filter(id=stud_id).first()
+        if not student:
+            return Response({"message": "No student found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        cls_reg = ClassFees.objects.filter(cls=student.student_class).first()
+        if not cls_reg:
+            return Response({"message": "Fees for this class has not been set"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        
+        active_program = Program.objects.filter(is_active=True).first()
 
-     # Organize the grades by sequences
-    grades_by_sequence = {}
-    for grade in grade_list:
-        sequence_id = grade.sequence.id
-        if sequence_id not in grades_by_sequence:
-            grades_by_sequence[sequence_id] = []
-        grades_by_sequence[sequence_id].append(grade)
+        if not active_program:
+            return Response({"message": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
 
-    ctx = {'grades_by_sequence': grades_by_sequence, 'student': student_grades.student}
-    
-    return PDFTemplateResponse(
-        request=request,
-        template='results/template-one.html',
-        context=ctx,
-        filename='report_card.pdf'
-    )
+        cls_reg_serializer = ClassFeeSerializer(cls_reg)
+        reg_exist = Registration.objects.filter(student=student.id, year=active_program.id).first()
+      
+        if reg_exist:
+            transaction_id = reg_exist.generate_transaction_id()
+            reg_exist.transaction_id = transaction_id
+            reg_exist.save()
+            
+            serializer = self.serializer_class(reg_exist)
+            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_200_OK)
+
+        reg_obj = {
+            "student": student,
+            "year": active_program,
+            "expected_amount": cls_reg.fee_amount,
+            "registration_status": "none",
+            "registration_expiry_date": active_program.academic_end,
+        }
+
+        
+
+        serializer = self.serializer_class(data=reg_obj)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({ "registration": serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_201_CREATED)
+        
+        return Response({"message": "Unable to process request for student. Try again later", "errors": serializer.errors}, status=status.HTTP_200_OK)
 
 
 
 class RegistrationListCreateAPIView(APIView):
+    serializer_class = StudentRegistrationSerializer
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        registrations = Registration.objects.all()
-        serializer = RegistrationSerializer(registrations, many=True)
+        registrations = Registration.objects.filter(is_deleted=False)
+        serializer = RegistrationFetchSerializer(registrations, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = RegistrationSerializer(data=request.data)
+        active_program = Program.objects.filter(is_active=True).first()
+
+        if not active_program:
+            return Response({"error": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
+        
+       
+        request.data['year'] = active_program
+        request.data['receiver'] = request.user.id
+
+        serializer = self.serializer_class(data=request.data)
+        
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response( serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -1600,7 +1815,7 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
 
     def get(self, request, pk):
         registration = self.get_object(pk)
-        serializer = RegistrationSerializer(registration)
+        serializer = RegistrationFetchSerializer(registration)
         return Response(serializer.data)
 
     def put(self, request, pk):
@@ -1609,7 +1824,7 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response("serializer.errors", status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         registration = self.get_object(pk)
@@ -1620,6 +1835,19 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
 
 
 class PromoteStudentAPIView(APIView):
+
+    def generate_new_student_subjects(self, student, new_class):
+        subjects = new_class.subjects.all()
+        grade = Grade.objects.create(student=student, classroom=new_class)
+
+        sequences = Sequence.objects.all()
+        for sequence in sequences:
+            for subject in subjects:
+                sts = StudentSubjects.objects.create(student=self, subject=subject, sequence=sequence)
+                grade.grade_list.add(sts)
+        
+        grade.save()
+    
     def post(self, request, student_id, new_class_id):
         # Retrieve the student and new class instances
         student = get_object_or_404(Student, id=student_id)
@@ -1639,6 +1867,7 @@ class PromoteStudentAPIView(APIView):
         student.student_class = new_class
         student.save()
         
+        self.generate_new_student_subjects(student, new_class)
         # Optionally, you can perform additional actions here, such as updating the student's grade, position, etc.
         
         return Response({"message": "Student promoted to new class successfully",
@@ -1649,7 +1878,42 @@ class PromoteStudentAPIView(APIView):
 
 
 
-
+class RegisterPaymentAPIView(APIView):
+    def post(self, request):
+        data = request.data
+        amount = data.get('amount')
+        transaction_id = data.get('transaction_id')
+        registration_id = data.get('registration_id') 
+        
+        print(transaction_id)
+        # Validate payment data
+        if not (amount and transaction_id and registration_id):
+            return Response({'error': 'Incomplete payment data'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        registration = None
+        try:
+            registration = Registration.objects.get(id=registration_id)
+        except Registration.DoesNotExist:
+            return Response({'error': 'Invalid registration ID'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Perform transaction verification with Flutterwave (Pseudo code)
+        response = flutterwave_verify_transaction(transaction_id)
+        print('response from fluterwave......................')
+        print(response)
+        # if response.status_code == 200:
+        #     transaction_data = response.json()
+        #     # Check if the transaction is successful and the amount matches
+        
+        # Create a new payment
+        # payment = Payment.objects.create(
+        #     amount=amount,
+        #     transaction_id=transaction_id,
+        #     registration=registration,
+        # )
+        
+        # Update registration status or perform other actions as needed
+        
+        return Response({'success': 'Payment registered successfully'})
 
 
 # @api_view(['GET'])

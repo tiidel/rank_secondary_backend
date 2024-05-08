@@ -63,7 +63,7 @@ class RegisterAPIView(GenericAPIView):
 
         # relativeLink = reverse('verify-email')
 
-        absurl = FRONTEND_DOMAIN + "?token=" + str(token)
+        absurl = FRONTEND_DOMAIN + "verify-email?token=" + str(token)
 
         data = {
             'email_subject': 'Account created successfully',

@@ -1,19 +1,37 @@
-FROM python:3.8-alpine
+FROM surnet/alpine-python-wkhtmltopdf:3.9.2-0.12.6-full
 
 WORKDIR /rank
 
 ENV PYTHONUNBUFFERED=1
-RUN apk update && apk add postgresql-client
 
-RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev redis
+# Install system dependencies
+RUN apk update && apk add --no-cache \
+    postgresql-client \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    redis \
+    fontconfig \
+    libxrender \
+    libxext \
+    libx11 \
+    freetype \
+    ttf-dejavu \
+    ttf-droid \
+    ttf-freefont \
+    ttf-liberation \
+    wget \
+    tar \
+    xz
 
-RUN pip install --upgrade pip setuptools
+    
 
+# Upgrade pip and setuptools
+RUN pip install --no-cache-dir --upgrade pip setuptools
 
-# INSTALLING DEPENDENCIES
 COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
-
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 

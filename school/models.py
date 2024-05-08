@@ -1,9 +1,10 @@
 from django.db import models
-from datetime import date
+from datetime import date, datetime
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from core.models import User
+
 
 from django.utils import timezone, text, crypto
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
@@ -95,7 +96,7 @@ class Terms(models.Model):
     
     term_name = models.CharField(_("Name of the term e.g first term, second term"), max_length=100, null=False, blank=False)
     
-    start_date = models.DateField(_("Date term starts"), auto_now_add=True)
+    start_date = models.DateField(_("Date term starts"), auto_now_add=False)
     
     end_date = models.DateField(_("Date term ends"), auto_now=False, auto_now_add=False)
 
@@ -319,25 +320,22 @@ class Event(models.Model):
     
 class Program(BaseModel):
     
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
-    
     events = models.ManyToManyField("Event", verbose_name=_("name"), null=True)
     
     academic_start = models.DateField(_("Date school starts"), default=timezone.now)
     
     academic_end = models.DateField(_("Date school closes"), default=timezone.now)
     
-    is_active = models.BooleanField(_("Date program should terminate"), default=False)
+    is_active = models.BooleanField(_("Date program should terminate"), default=True)
 
     class Meta:
         
         verbose_name = _("Program")
         
         verbose_name_plural = _("Programs")
+
+        ordering = ['-academic_end']
         
-    
-    def __str__(self):
-        return f"{self.academic_start.year} - {self.academic_end.year} "
     
     def clean(self):
         if self.academic_start >= self.academic_end:
@@ -350,11 +348,11 @@ class Program(BaseModel):
     
     def save(self, *args, **kwargs):
         self.clean()
-        if self.academic_end < timezone.now().date():
-            self.is_active = False
-        elif self.academic_end < self.academic_start + timezone.timedelta(days=30):
-            raise ValidationError("End date must be at least 1 month after start date.")
         super().save(*args, **kwargs)
+
+    
+    def __str__(self):
+        return f"{self.academic_start.year} - {self.academic_end.year} "
 
     def update_fields(self, **kwargs):
         for key, value in kwargs.items():
@@ -365,6 +363,10 @@ class Program(BaseModel):
         if self.academic_end < timezone.now().date():
             self.is_active = False
             self.save()
+    
+    def is_currently_active(self):
+        today = timezone.now().date()
+        return self.academic_start <= today <= self.academic_end
 
 class PaymentDetail(models.Model):
     
@@ -424,6 +426,26 @@ class StudentClassRelation(models.Model):
 
     grade = models.CharField(_("Grade of student"), max_length=10, null=True, blank=True)
 
+
+class ClassFees(models.Model):
+    cls =  models.ForeignKey(Class, on_delete=models.CASCADE)
+
+    fee_amount = models.IntegerField(_("Total amount of money to be payed by students in this class"))
+
+    first_installment = models.IntegerField(_("First installment of this fee"))
+
+    second_installment = models.IntegerField(_("Second installment of this fee"), null=True, blank=True)
+
+    third_installment = models.IntegerField(_("Third installment of this fee"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("class Fee"),
+        verbose_name_plural = _("class Fees")
+
+    def __str__(self):
+        return f"Class {cls.class_name} - {fee_amount}"
+
+    
 
 class Staff(BaseModel):
     
@@ -565,22 +587,29 @@ class Student(models.Model):
 
             existing_subjects = set(self.studentsubjects_set.values_list('subject_id', flat=True))
 
+            terms = Terms.objects.all()
+            for term in terms:
+                sequences = Sequence.objects.filter(term=term)
+                grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance, term=term)
+                for sequence in sequences:
+                    for subject in class_instance.subjects.all():
+                        sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject, sequence=sequence)
+                        if sts.subject.id not in existing_subjects:
+                            sts.save()
+                        grade.grade_list.add(sts)
+                
+                if not grade.position:
+                    grade.position = self.student_class.studentclassrelation_set.filter(class_instance=class_instance).count()
+                
+
+                grade.save()
+                            
             subjects = class_instance.subjects.all()
-
-            grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance)
-
-            # Add subjects that are not in the class
-            sequences = Sequence.objects.all()
-            for sequence in sequences:
-                for subject in subjects:
-                    sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject, sequence=sequence)
-                    grade.grade_list.add(sts)
-
+            
             # Remove subjects that are no longer in the class
             if not self.studentclassrelation_set.filter(class_instance=class_instance).exists():
                 StudentClassRelation.objects.create(student=self, class_instance=class_instance)
 
-            grade.save()
             
 
 
@@ -692,18 +721,97 @@ class Registration(BaseModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     
     fee_type = models.CharField(max_length=15,blank=True, null=True)
+
+    transaction_count = models.IntegerField(default=0)
     
-    amount = models.IntegerField()
-    
-    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
-    
-    depositor = models.CharField(_("Names of user paying the fees"), max_length=20, blank=True, null=True)
-    
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+
     is_complete = models.BooleanField(default=False)
+
+    expected_ammount = models.IntegerField(_("The amount student is expected to pay for the class"))
+
+    payed_ammount = models.IntegerField(_("Money student has actually paid for the school year"), default=0)
     
-    installment = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
+    registration_status = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
+
+    payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
     
     is_registered = models.BooleanField(_("Given a school calendar, the date registration expires"), default=False)
+
+    year = models.ForeignKey(Program, on_delete=models.CASCADE, null=False)
+
+    registration_date = models.DateField( auto_now=True)
+
+    registration_expiry_date = models.DateField()
+
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        
+        verbose_name = _("Registration")
+        
+        verbose_name_plural = _("Registrations")
+
+    def __str__(self):
+        return f"{self.student.user.email} {self.registration_status}"
+
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            self.transaction_id = self.generate_transaction_id()
+
+        super().save(*args, **kwargs)
+
+    def generate_transaction_id(self):
+        current_date = timezone.now().date()
+
+        self.transaction_count += 1
+
+        transaction_id = f'Rank{current_date.strftime("%Y%m%d")}{self.transaction_count + 1:09d}'
+        
+        return transaction_id
+
+
+class Payment(models.Model):
+
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
+
+    installment_number = models.IntegerField()
+
+    amount = models.IntegerField()
+
+    payment_date = models.DateField()
+
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+
+    payment_status = models.CharField(max_length=20, blank=True, null=True)
+
+    is_complete = models.BooleanField(default=False)
+
+    ### NULLABLES ###
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
+
+    depositor = models.CharField(max_length=20, blank=True, null=True)
+    
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+
+    payment_gateway = models.CharField(max_length=50, blank=True, null=True)
+
+    currency = models.CharField(max_length=3, blank=True, null=True)
+
+    reference_number = models.CharField(max_length=50, blank=True, null=True)
+
+    payment_confirmation_date = models.DateField(blank=True, null=True)
+
+    notes = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        
+        verbose_name = _("Fee")
+        
+        verbose_name_plural = _("Fees")
+
+    def __str__(self):
+        return f"{self.transaction_id} {self.amount}"
 
 
 

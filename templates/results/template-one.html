@@ -1,3 +1,5 @@
+{% load math_filters %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -86,7 +88,7 @@
                     </div>
                     <div class="flex_head_inner">
                         <p>A: </p>
-                        <p>Brazzavile</p>
+                        <p>Unknown</p>
                     </div>
                 </div>
                 
@@ -134,22 +136,33 @@
                         <th>Appreciation</th>
                     </tr>
                     
-                    
-                    {% for id, subject_grade in grades_by_sequence.values %}
-                        {% for sequence_id, grades in grades_by_sequence.items %}
-                            {% for grade in grades %}
-                                <tr>
-                                    <td colspan="2">{{ grade.subject.name }}</td>
-                                    <td> {{ grade.grade }} </td>
-                                    <td>{{ subject_grade }} </td>
-                                    <td>{{ grades }}</td>
-                                    <td>{{ grade.seq_average }}</td>
-                                    <td>19.00</td>
-                                    <td>17<sup class="font-weight-bold">th</sup></td>
-                                    <td>Very Good</td>
-                                </tr>
-                            {% endfor %}
-                        {% endfor %}
+                    {% for seq_a, seq_b in results.values %}
+                    <tr>
+                        <td colspan="2">{{ seq_a.subject.name }}</td>
+                        <td>{{ seq_a.grade }}</td>
+                        <td>{{ seq_b.grade }}</td>
+                        <td>{{ seq_a.grade|add:seq_b.grade|floatformat:"2"|divide:2 }}</td>
+
+                        <td>{{ seq_b.subject.sub_coef }}</td>
+                        <td>{{ seq_a.grade|add:seq_b.grade|floatformat:"2"|divide:2|multiply:seq_b.subject.sub_coef }}</td>
+                        <td></td>
+                        <td>
+                            {% with average=seq_a.grade|add:seq_b.grade|floatformat:"2"|divide:2 %}
+                                {% if average > 18 %}
+                                    Excellent
+                                {% elif average > 15 %}
+                                    Very Good
+                                {% elif average > 13 %}
+                                    Good
+                                {% elif average > 9 %}
+                                    Average
+                                {% else %}
+                                    Poor
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        
+                    </tr>
                     {% endfor %}
 
 
@@ -172,7 +185,7 @@
                         <td style="font-weight: 900;" colspan="5">Travail Passable </td>
                         <td></td>
                         <td></td>
-                        <td rowspan="2" colspan="5"><p class="font-weight-bold">Brazzavile le 15 novembre 2023,</p> Le Directeur</td>
+                        <td rowspan="2" colspan="5"><p class="font-weight-bold">le 15 novembre 2023,</p> Le Directeur</td>
                     </tr>
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;">REMARK: </td>

@@ -2,6 +2,7 @@ from rest_framework.routers import DefaultRouter
 from .views import *
 from wkhtmltopdf.views import PDFTemplateView
 from .downloads import *
+from .analyticsApis import *
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -43,6 +44,8 @@ urlpatterns = [
     
     #CLASSES
     path('classes/', ClassView.as_view(), name="classes"),
+    path('classes/fees/', ClassFeeView.as_view(), name="classes"),
+    path('classes/fees/<str:id>/', ClassFeeUpdateView.as_view(), name="classes"),
     path('classes/<int:class_id>/', ClassItemView.as_view(), name="classes"),
     path('classes/<int:class_id>/instructor/', ClassInstructor.as_view(), name="class_instructor"),
 
@@ -72,8 +75,9 @@ urlpatterns = [
     path('subjects/grade/<str:subj_id>/', GradeStudentView.as_view(), name='grade_student'),
     
     # GRADES
+    path('results/', StudentResultsView.as_view(), name='grade_student'),
     path('grades/<str:term>/<str:subject>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
-    path('grades/student/<str:term_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
+    path('grades/student/<str:cls_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
     # GUARDIANS
     path('guardians/', GuardiansView.as_view(), name="guardian_view"),
@@ -94,14 +98,31 @@ urlpatterns = [
     # DOWNLOAD 
     # path('generate-pdf/', generate_pdf, name='generate_pdf'),
     path('student_result/<str:stud_id>/download', download_student_result, name='download_student_result'),
-    path('student_result/<str:term_id>/<str:stud_id>/download', download_student_result_for_term, name='download_student_result'),
+    path('student_result/<str:cls_id>/<str:term_id>/<str:stud_id>/download', download_student_result_for_term, name='download_student_result'),
     path('zip/<str:cls>/<str:term>/', download_zip, name='download_zip'),
     path('pdf/', PDFTemplateView.as_view(template_name='results/template_one.html',
         filename='my_pdf.pdf'), name='pdf'),
     
+    path('student_profile/<str:stud_id>/download/', download_student_profile, name='download_student_profile'),
+    path('staff_profile/<str:staff_id>/download/', download_staff_profile, name='download_staff_profile'),
+
+    #PAYMENTS
+    path('fee-payments/', RegisterPaymentAPIView.as_view(), name='register_payment'),
 
     # REGISTRATION AND PROMOTION 
     path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),
+    path('register/', RegistrationListCreateAPIView.as_view(), name='promote_student'),
+    path('student/register/<str:stud_id>/', RegisterStudentAPIView.as_view(), name='promote_student'),
+    path('register/<str:pk>/', RegistrationRetrieveUpdateDestroyAPIView.as_view(), name='promote_student'),
+    
+    path('analytics/registrations/', RegistrationAnalyticsAPIView.as_view(), name='analytics for registration'),
+    path('analytics/registrations/deep/', DeepRegistrationAnalytics.as_view(), name='deep analytics for registration'),
+    path('analytics/draw/', GraphDataAPIView.as_view(), name='deep analytics for registration'),
+    path('analytics/numbers/', NumbersAnalyticsView.as_view(), name='Dashboad numbers analytics'),
+    
+    # DOWNLOAD CSVs
+    path('download-users-csv/', download_users_as_csv, name='download_users_csv'),
+    path('class_list/<str:class_id>/download/', download_class_list, name='download_class_list'),
 
 
 ]
