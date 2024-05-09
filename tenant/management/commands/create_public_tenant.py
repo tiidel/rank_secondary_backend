@@ -14,7 +14,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING('Public tenant already exists'))
 
-            domain_name = 'localhost' 
+            domain_name = 'rankafrica.site' 
             
             if not Domain.objects.filter(tenant=public_tenant).exists():
                 domain = Domain.objects.create(domain=domain_name, tenant=public_tenant, is_primary=True)
