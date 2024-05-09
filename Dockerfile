@@ -37,4 +37,4 @@ COPY . .
 
 EXPOSE 6379
 
-CMD ["python", "run.py", "runserver", "0.0.0.0:8001"]
+CMD ["python", "run.py", "runserver", "0.0.0.0:80"]
