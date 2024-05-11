@@ -18,7 +18,7 @@ urlpatterns = [
     path('verify-email/', views.VerifyEmail.as_view(), name='verify-email'),
    
     # RESET PASSWORD
-    path('password-reset/<uidb64>/<token>', views.RequestPasswordReset.as_view(), name='password_reset_confirm'),
+    path('reset-password', views.ChangePassword.as_view(), name='password_reset_confirm'),
     path('request-password-reset/', views.RequestPasswordReset.as_view(), name='password_reset'),
 
 
