@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
 from collections import defaultdict
-
+from django.db.models.signals import pre_save
     
 from .models import *
 from .serializer import *
@@ -63,6 +63,7 @@ def create_student_subjects(sender, instance, created, **kwargs):
                 update_grade_instance(student_subject)
 
 
+
 def update_grade_instance(student_subject):
     """
     Update Grade instance for the student whenever a StudentSubjects instance is created or updated.
@@ -76,6 +77,53 @@ def update_grade_instance(student_subject):
     grade.grade_list.add(student_subject)
 
     grade.save()
+
+
+@receiver(pre_save, sender=Grade)
+def capture_old_average(sender, instance, **kwargs):
+    """
+    Get average of grade before it is updated
+    """
+    if instance.pk:
+        instance._old_average = Grade.objects.get(pk=instance.pk).average
+    else:
+        instance._old_average = None
+
+@receiver(post_save, sender=Grade)
+def grade_average_updated(sender, instance, created, **kwargs):
+    """
+    Get average of grade after update
+    Used to update position only when there is change in the averages
+    """
+    if not created and instance._old_average is not None and instance.average != instance._old_average:
+        update_all_class_positions(instance.classroom, instance.term)
+
+
+def update_all_class_positions(cls, term):
+    """
+    Update position of all grades in a class for a term
+    """
+    grades = Grade.objects.filter(classroom=cls, term=term).all()
+    
+    student_averages = defaultdict(list)
+
+    for grade in grades:
+        student_averages[grade.student_id] = grade.average
+
+    sorted_students = sorted(student_averages.items(), key=lambda x: x[1], reverse=True)
+
+    student_positions = {}
+    for i, (student_id, _) in enumerate(sorted_students, start=1):
+        student_positions[student_id] = i
+
+    for grade in grades:
+        grade.position = student_positions.get(grade.student_id, None)
+        grade.save()
+
+    print('position and grade updated', student_positions)
+    return student_positions
+    
+
 
 
 # ////////////// DO NOT UNCOMMENT THIS. IT EXIST ALREADY IN SETTINGS ///////////////////////
@@ -1560,7 +1608,9 @@ class GradeStudentForAllSubjectAPIView(APIView):
         else:
             final_average = 0
 
-        return final_average
+        result = {"avg": final_average, "total": weighted_sum, "coef": coefficient_sum}
+        return result
+
 
 
     def get(self, request, cls_id, student_id):
@@ -1570,22 +1620,30 @@ class GradeStudentForAllSubjectAPIView(APIView):
             return Response({"message": "Please provide the term in the query '?term=term'"}, status=status.HTTP_400_BAD_REQUEST)
         
         student_marks = Grade.objects.filter(classroom=cls_id, student=student_id, term=term).first()
+
+        if not student_marks:
+            return Response({"message": "There is a mix up in your request"}, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = self.serializer_class(student_marks)
         
-        avg = self.calculate_adjusted_student_average(serializer.data)
+        response = self.calculate_adjusted_student_average(serializer.data)
 
-        student_marks.average = avg
+        student_marks.average = response['avg']
         student_marks.save()
 
-        return Response({'grade': serializer.data, 'average': avg}, status=status.HTTP_200_OK)
+        return Response({'grade': serializer.data, **response}, status=status.HTTP_200_OK)
     
 
     def post(self, request, cls_id, student_id):
         cls = Class.objects.filter(id=cls_id).first()
+        term = request.GET.get('term')
 
         if not cls:
             return Response({"message": "Class not found"}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not term:
+            return Response({"message": "Please provide the term in the query '?term=term'"}, status=status.HTTP_400_BAD_REQUEST)
+        
         marks_data = request.data
         updated_grades = {}
         invalid_subjects = []
@@ -1597,7 +1655,6 @@ class GradeStudentForAllSubjectAPIView(APIView):
 
             try:
                 student_grade = StudentSubjects.objects.get(sequence=sequence, student=stud_id, subject=subject_id)
-                print(student_grade)
                 serializer = StudentSubjectSerializer(instance=student_grade, data=data, partial=True)
 
                 if serializer.is_valid():
@@ -1609,6 +1666,19 @@ class GradeStudentForAllSubjectAPIView(APIView):
 
             except StudentSubjects.DoesNotExist:
                 invalid_subjects.append({"subject": subject_id, "message": f"Student {stud_id} not found for the given subject and term"})
+
+        grade = Grade.objects.filter(classroom=cls_id, student=student_id, term=term).first()
+        if not grade:
+            return Response({"message": "Grades not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        grade_data = self.serializer_class(grade)
+        
+        response = self.calculate_adjusted_student_average(grade_data.data)
+        grade.average = response['avg']
+        grade.save()
+
+        print(grade)
+        print(grade.average)
 
         if invalid_subjects:
             return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_206_PARTIAL_CONTENT)

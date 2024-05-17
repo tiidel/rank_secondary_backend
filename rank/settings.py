@@ -60,6 +60,7 @@ SHARED_APPS = [
     'django_extensions',
     'celery',
     'fcm_django',
+    "bootstrap4",
 ]
 
 

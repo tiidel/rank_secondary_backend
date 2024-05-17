@@ -17,6 +17,7 @@ from rank.settings import FRONTEND_DOMAIN
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 
 
 from rest_framework.parsers import MultiPartParser
@@ -63,7 +64,7 @@ class RegisterAPIView(GenericAPIView):
 
         # relativeLink = reverse('verify-email')
 
-        absurl = FRONTEND_DOMAIN + "verify-email?token=" + str(token)
+        absurl = FRONTEND_DOMAIN + "/verify-email?token=" + str(token)
 
         data = {
             'email_subject': 'Account created successfully',
@@ -147,37 +148,65 @@ class RequestPasswordReset(GenericAPIView):
     serializer_class = ResetPasswordSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=data)
+        serializer = self.serializer_class(data=request.data)
 
         try:
             email = request.data.get('email')
             
             if User.objects.filter(email=email).exists():
-
                 user = User.objects.get(email=email)
-                uidb64 = urlsafe_base64_encode(user.id)
+                user_id_bytes = force_bytes(user.id)
+                uidb64 = urlsafe_base64_encode(user_id_bytes)
                 token = PasswordResetTokenGenerator().make_token(user)
 
-                # Send reset email
-                current_site = get_current_site(
-                    request = request
-                    ).domain
                 
-                relativeLink = reverse('password_reset_confirm', kwargs={'uidb64': uidb64, 'token':token})
-                absurl = 'http://'+current_site+relativeLink
+                relativeLink = f'/reset-password?uid={uidb64}&token={token}'
+                absurl = FRONTEND_DOMAIN + relativeLink
                 email_body = f'To Reset password for {user.username} user the link below \n {absurl}'
                 data = {
-                    'email_body': email_body,
-                    'to_email': user.email,
                     'email_subject': 'Reset password',
-                    
                 }
-                Util.send_email(data=data)
+                context = {
+                    'user': LoginSerializer(user).data,
+                    'reset_url': absurl
+                }
+                print(absurl)
+                send_email_with_template.delay(data, 'reset_password.html', context, [user.email])
+            else:
+                return Response({"message": "User with the given email does not exist"}, status=status.HTTP_400_BAD_REQUEST)
         
-        except Exception as indentifier:
-            print(indentifier)
+        except Exception as errors:
+            return Response({"error": str(errors)}, status=status.HTTP_400_BAD_REQUEST)
             
         return Response({"success": "we have sent you a link to reset your password"}, status=status.HTTP_200_OK)
+
+
+class ChangePassword(GenericAPIView):
+    def post(self, request):
+        uidb64 = request.GET.get('uid')
+        token = request.GET.get('token')
+        new_password = request.data.get('password')
+        
+        if not uidb64 or not token or not new_password:
+            return Response({"error": "Request not valid, check the documentations"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = str(urlsafe_base64_decode(uidb64), 'utf-8')   
+            user = User.objects.get(id=uid)
+
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({"error": "Invalid user id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if PasswordResetTokenGenerator().check_token(user, token):
+            user.set_password(new_password)
+            user.save()
+
+            return Response({"success": "Password reset successfully"}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Happy holidays"}, status=status.HTTP_200_OK)
 
 
 class PasswordTokenCheck(GenericAPIView):

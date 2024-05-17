@@ -7,6 +7,7 @@ from tenant_schemas_celery.task import TenantTask
 from django.template.loader import render_to_string
 from django.core.mail import EmailMessage
 from fcm_django.models import FCMDevice
+from school.models import Grade
 
 @app.task
 def connection_test(arg1, arg2):
@@ -35,6 +36,10 @@ def send_email_with_template(data: dict, template_name: str, context: dict, reci
 
     except Exception as e:
         print(e)
+
+
+
+
 
 
 # @app.task
