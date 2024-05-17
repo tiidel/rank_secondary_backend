@@ -137,7 +137,13 @@ def download_student_result_for_term(request,cls_id, term_id, stud_id):
         }
         subject_data[subject].append(entry)
 
-    ctx = {'grades_by_sequence': grades_by_sequence, 'results': dict(subject_data), 'student': student_grades.student}
+    ctx = {
+            'grades_by_sequence': grades_by_sequence, 
+            'results': dict(subject_data),
+            'position': student_grades.position, 
+            'average': round(student_grades.average, 2), 
+            'student': student_grades.student
+        }
     
     return PDFTemplateResponse(
         request=request,

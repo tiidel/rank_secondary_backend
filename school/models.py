@@ -443,7 +443,7 @@ class ClassFees(models.Model):
         verbose_name_plural = _("class Fees")
 
     def __str__(self):
-        return f"Class {cls.class_name} - {fee_amount}"
+        return f"Class {self.cls.class_name} - {self.fee_amount}"
 
     
 
