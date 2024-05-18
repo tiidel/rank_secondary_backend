@@ -220,8 +220,8 @@ class YearTermView(APIView):
     def get(self, request):
         # Get active program
         active_program = Program.get_active_program()
-        # Get all terms within start and end date of program
-        terms = Terms.objects.filter(start_date__gte=active_program.academic_start, end_date__lte=active_program.academic_end)
+        # Get all program terms and return them
+        terms = active_program.terms.all()
         
         serializer = self.serializer_class(terms, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -450,85 +450,85 @@ class TermAPIView(APIView):
 
         return Response(response_data, status=status.HTTP_200_OK)
     
-    def create_school_program(self, start_date, end_date):
-        program = Program.objects.create(academic_start=str(start_date), academic_end=str(end_date))
-        serializer = ProgramSerializer(program)
-        return serializer.data 
-    
-    def post(self, request):
+    def create_school_program(self, start_date, end_date, terms):
+        try:
+            program = Program.objects.create(academic_start=start_date, academic_end=end_date)
+            program.terms.set(terms)
+            program.save()
+            serializer = ProgramSerializer(program)
+            return serializer.data
+        except Exception as e:
+            return None
 
+    def post(self, request):
         if not isinstance(request.data, list):
             return Response({"message": "Request data should be a list of terms"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         created_terms = []
         errors = []
         min_start_date = None
         max_end_date = None
+        terms_list = []
 
         for term_data in request.data:
             start_date = term_data.get('start_date')
             end_date = term_data.get('end_date')
-            start_date_str = term_data.get('start_date')
-            end_date_str = term_data.get('end_date')
-            
-            
-            # Check if the new term overlaps with existing terms
+
+            if not start_date or not end_date:
+                errors.append({"message": "Start date and end date are required"})
+                continue
+
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except ValueError:
+                errors.append({"message": "Invalid date format. Use YYYY-MM-DD"})
+                continue
+
             overlapping_terms = Terms.objects.filter(
                 Q(start_date__range=[start_date, end_date]) |
                 Q(end_date__range=[start_date, end_date]) |
                 Q(start_date__lte=start_date, end_date__gte=end_date)
             )
 
-            # if overlapping_terms.exists():
-            #     errors.append({"message": "Term overlaps with existing term"})
-            #     continue
-
-            school_name = term_data.pop('school', None)
-            if not school_name:
-                errors.append({"message": "School name is required"})
+            if overlapping_terms.exists():
+                errors.append({"message": "Term overlaps with existing term"})
                 continue
-            
+
+            school_id = term_data.pop('school', None)
+            if not school_id:
+                errors.append({"message": "School ID is required"})
+                continue
+
             try:
-                school = School.objects.get(id=school_name)
+                school = School.objects.get(id=school_id)
             except School.DoesNotExist:
-                errors.append({"message": f"School with ID '{school_name}' does not exist"})
+                errors.append({"message": f"School with ID '{school_id}' does not exist"})
                 continue
-            
-            start_date_compare = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date_compare = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
-            # Update min_start_date if it's None or the current start_date is smaller
-            if min_start_date is None or start_date_compare < min_start_date:
-                min_start_date = start_date_compare
+            if min_start_date is None or start_date < min_start_date:
+                min_start_date = start_date
+            if max_end_date is None or end_date > max_end_date:
+                max_end_date = end_date
 
-            # Update max_end_date if it's None or the current end_date is larger
-            if max_end_date is None or end_date_compare > max_end_date:
-                max_end_date = end_date_compare
-            
-            
             term_data['school'] = school.id
-            
             serializer = self.serializer_class(data=term_data)
             if serializer.is_valid():
-                serializer.save()
+                term = serializer.save()
                 created_terms.append(serializer.data)
+                terms_list.append(term)
             else:
                 errors.append(serializer.errors)
 
-        print('-------------------------------')
-        print(min_start_date , max_end_date)
-        print('-------------------------------')
-        
-        year = None
         if min_start_date and max_end_date:
-            year = self.create_school_program(min_start_date or start_date, max_end_date or end_date)
+            year = self.create_school_program(min_start_date, max_end_date, terms_list)
+        else:
+            year = None
 
         if errors:
             return Response({"errors": errors, "created_terms": created_terms}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"year": year, "terms": created_terms}, status=status.HTTP_201_CREATED)
-
-
 
     def put(self, request, pk):
         term = Terms.objects.get(pk=pk)

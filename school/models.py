@@ -320,13 +320,13 @@ class Event(models.Model):
     
 class Program(BaseModel):
     
-    terms = models.ManyToManyField("Terms", verbose_name=_("program_terms"), null=True)
+    terms = models.ManyToManyField("Terms", verbose_name=_("program_terms"))
     
     events = models.ManyToManyField("Event", verbose_name=_("name"), null=True)
     
-    academic_start = models.DateField(_("Date school starts"), default=timezone.now)
+    academic_start = models.DateField(_("Date school starts"))
     
-    academic_end = models.DateField(_("Date school closes"), default=timezone.now)
+    academic_end = models.DateField(_("Date school closes"))
     
     is_active = models.BooleanField(_("Date program should terminate"), default=True)
 
@@ -667,7 +667,7 @@ class Sequence(models.Model):
     """ --- Describes the sequence of the school year --- """
     name = models.CharField(_("Name of the sequence e.g first sequence, second sequence"), max_length=100, null=False, blank=False)
     
-    start_date = models.DateField(_("Date sequence starts"), auto_now_add=True, null=True, blank=True)
+    start_date = models.DateField(_("Date sequence starts"), auto_now_add=False, null=True, blank=True)
     
     end_date = models.DateField(_("Date sequence ends"), auto_now=False, auto_now_add=False, null=True, blank=True)
 
