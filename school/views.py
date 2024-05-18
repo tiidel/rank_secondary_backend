@@ -1736,6 +1736,7 @@ class GradeStudentForAllSubjectAPIView(APIView):
                 invalid_subjects.append({"subject": subject_id, "message": f"Student {stud_id} not found for the given subject and term"})
 
         grade = Grade.objects.filter(classroom=cls_id, student=student_id, term=term).first()
+
         if not grade:
             return Response({"message": "Grades not found"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -1771,7 +1772,8 @@ class StudentResultsView(APIView):
         
         sequence_list = SequenceSerializer(sequences, many=True).data
 
-        student_grade = Grade.objects.filter(classroom=cls, student=student).first()
+        student_grade = Grade.objects.filter(classroom=cls, student=student, term=term).first()
+        
         if not student_grade:
             return Response({"message": "Unable to find grades for the given student and class"}, status=status.HTTP_404_NOT_FOUND)
 

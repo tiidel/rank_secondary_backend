@@ -370,9 +370,12 @@ class Program(BaseModel):
         today = timezone.now().date()
         return self.academic_start <= today <= self.academic_end
     
-    def get_active_program():
-        return Program.objects.filter(academic_start__lte=timezone.now().date(), academic_end__gte=timezone.now().date()).first()
-
+    @classmethod
+    def get_active_program(cls):
+        return cls.objects.filter(
+            academic_start__lte=timezone.now().date(), 
+            academic_end__gte=timezone.now().date()
+        ).first()
 class PaymentDetail(models.Model):
     
     paypal_email = models.EmailField(_("Paypal email address"), max_length=256, null=True, blank=True)
@@ -491,6 +494,8 @@ class Staff(BaseModel):
             
             return age
 
+    def get_full_name(self):
+        return f"{self.user.first_name} {self.user.last_name}"
 
 class Teacher(models.Model):
     """ --- Designnates a teacher as a staff --- """
@@ -594,17 +599,20 @@ class Student(models.Model):
 
             existing_subjects = set(self.studentsubjects_set.values_list('subject_id', flat=True))
 
-            terms = Terms.objects.all()
+            active_program = Program.get_active_program()
+            terms = active_program.terms.all()
+            
             for term in terms:
                 sequences = Sequence.objects.filter(term=term)
                 grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance, term=term)
+               
                 for sequence in sequences:
                     for subject in class_instance.subjects.all():
                         sts, _ = StudentSubjects.objects.get_or_create(student=self, subject=subject, sequence=sequence)
                         if sts.subject.id not in existing_subjects:
                             sts.save()
                         grade.grade_list.add(sts)
-                
+               
                 if not grade.position:
                     grade.position = self.student_class.studentclassrelation_set.filter(class_instance=class_instance).count()
                 

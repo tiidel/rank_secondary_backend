@@ -207,6 +207,9 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
         verbose_name = _("user")
         verbose_name_plural = _("users")
 
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
 
 class SchoolBaseModel(TimeStampedModel, ActivatorModel, SafeDeleteModel):
     
