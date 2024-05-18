@@ -1762,18 +1762,27 @@ class StudentResultsView(APIView):
         student = request.GET.get('student')
         cls = request.GET.get('class')
 
+        if not term or not student or not cls:
+            return Response({"message": "Term, student, and class parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
+
         sequences = Sequence.objects.filter(term=term)
-        sequence_list = SequenceSerializer(sequences, many=True).data
-        if not sequences:
-            return Response({"message": "unable to find sequences for the given term"}, status=status.HTTP_404_NOT_FOUND)
+        if not sequences.exists():
+            return Response({"message": "Unable to find sequences for the given term"}, status=status.HTTP_404_NOT_FOUND)
         
+        sequence_list = SequenceSerializer(sequences, many=True).data
+
         student_grade = Grade.objects.filter(classroom=cls, student=student).first()
-        grades = student_grade.grade_list.filter(sequence__in=sequences)
+        if not student_grade:
+            return Response({"message": "Unable to find grades for the given student and class"}, status=status.HTTP_404_NOT_FOUND)
+
+        grades = student_grade.grade_list.filter(sequence__in=sequences).order_by('sequence__id')
+        if not grades.exists():
+            return Response({"message": "No grades found for the specified sequences"}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = StudentSubjectsSerializer(grades, many=True)
-
         data = serializer.data
-        subject_data = defaultdict(list)
 
+        subject_data = defaultdict(list)
         for entry in data:
             subject = entry["subject"]["name"]
             sequence = entry["sequence"]
@@ -1784,8 +1793,53 @@ class StudentResultsView(APIView):
             subject_data[subject].append(sequences)
         
 
-        return Response({"sequences": sequence_list, "grades": subject_data})
+        return Response({"sequences": sequence_list, "grades": subject_data}, status=status.HTTP_200_OK)
 
+
+
+
+class SubjectResultsView(APIView):
+    def get(self, request):
+        term = request.GET.get('term')
+        subject_id = request.GET.get('subject')
+        cls = request.GET.get('class')
+
+        if not term or not subject_id or not cls:
+            return Response({"message": "Term, subject, and class parameters are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sequences = Sequence.objects.filter(term=term)
+        if not sequences.exists():
+            return Response({"message": "Unable to find sequences for the given term"}, status=status.HTTP_404_NOT_FOUND)
+        
+        sequence_list = SequenceSerializer(sequences, many=True).data
+
+        try:
+            subject = Subject.objects.get(id=subject_id)
+        except Subject.DoesNotExist:
+            return Response({"message": f"Subject with ID '{subject_id}' does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        grades = Grade.objects.filter(classroom=cls, term=term)
+        if not grades.exists():
+            return Response({"message": "No grades found for the specified subject, class, and term"}, status=status.HTTP_404_NOT_FOUND)
+
+        subject_data = defaultdict(list)
+        for grade in grades:
+            filtered_grades = grade.grade_list.filter(subject=subject).order_by('sequence__id')
+            if filtered_grades.exists():
+                for entry in filtered_grades:
+                    student = grade.student
+                    subject_data[student.get_full_name()].append({
+                        "sequence": entry.sequence.name,
+                        "sequence_id": entry.sequence.id,
+                        "grade": StudentSubjectsSerializer(entry).data
+                    })
+
+        if not subject_data:
+            return Response({"message": "No grades found for the specified subject in the given term and class"}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"sequences": sequence_list, "grades": subject_data}, status=status.HTTP_200_OK)
+        return Response('{"sequences": sequence_list, "grades": student_data}', status=status.HTTP_200_OK)
+    
 
 
 class JobApplicantsView(APIView):

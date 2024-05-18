@@ -79,6 +79,7 @@ urlpatterns = [
     
     # GRADES
     path('results/', StudentResultsView.as_view(), name='grade_student'),
+    path('subject/results/', SubjectResultsView.as_view(), name='grade_student'),
     path('grades/<str:term>/<str:subject>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
     path('grades/student/<str:cls_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
