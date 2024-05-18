@@ -222,9 +222,13 @@ class YearTermView(APIView):
         active_program = Program.get_active_program()
         # Get all program terms and return them
         terms = active_program.terms.all()
-        
-        serializer = self.serializer_class(terms, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        #Get active term and add to the response
+        active_term = Terms.get_active_term()
+
+        serializer_all = self.serializer_class(terms, many=True)
+        serializer_active = self.serializer_class(active_term)
+        return Response({"terms":serializer_all.data, "active_term": serializer_active.data}, status=status.HTTP_200_OK)
 
 
 class SocialAPIView(APIView):
