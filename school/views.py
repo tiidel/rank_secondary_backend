@@ -215,13 +215,38 @@ class ProgramItemView(APIView):
 
 
 
-class SocialViewSet(viewsets.ModelViewSet):
-    queryset = Social.objects.all()
+class SocialAPIView(APIView):
     serializer_class = SocialSerializer
+    def get(self, request):
+        socials = Social.objects.all()
+        serializer = self.serializer_class(socials, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
 
-class PaymentDetailViewset(viewsets.ModelViewSet):
-    queryset = PaymentDetail.objects.all()
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PaymentAPIView(APIView):
     serializer_class = PaymentDetailSerializer
+    def get(self, request):
+        payments = Payment.objects.all()
+        serializer = self.serializer_class(payments, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class SchoolEventAPIView(APIView):
     serializer_class = EventSerializer
@@ -337,9 +362,36 @@ class SchoolView(APIView):
         else:
             return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request):
-        pass
     
+class SchoolUpdateView(APIView):
+    serializer_class = SchoolSerializer
+    permission_classes = [IsAuthenticated]
+
+    def find_school_by_id(self, id):
+        try:
+            return School.objects.get(id=id)
+            
+        except School.DoesNotExist:
+            return Response({'error': 'School not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    def get(self, request, id):
+        school = self.find_school_by_id(id)
+        serializers = self.serializer_class(school)
+        return Response(serializers.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, id):
+        school = self.find_school_by_id(id)
+
+        serializers = self.serializer_class(school, data=request.data, partial=True)
+        
+        if serializers.is_valid():
+            serializers.save()
+            return Response(serializers.data, status=status.HTTP_200_OK)
+        return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id):
+        school = self.find_school_by_id(id)
+        return Response({"message": "Your request is being processed"}, status=status.HTTP_202_ACCEPTED)
 
 
 class SchoolFilesView(APIView):

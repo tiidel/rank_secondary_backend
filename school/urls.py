@@ -6,14 +6,16 @@ from .analyticsApis import *
 from django.urls import path, include
 
 router = DefaultRouter()
-router.register(r'social', SocialViewSet)
-router.register(r'payment-detail', PaymentDetailViewset)
 
 urlpatterns = [
     path('', include(router.urls)),
 
+    #SOCIAL AND PAYMENT
+    path('socials/', SocialAPIView.as_view(), name="socials"),
+    path('payments/', PaymentAPIView.as_view(), name="payments"),
     #SCHOOL
     path('schools/', SchoolView.as_view(), name="school"),
+    path('schools/<str:id>/', SchoolUpdateView.as_view(), name="school"),
     path('school-files/<str:id>/', SchoolFilesView.as_view(), name="school-form-view"),
 
     #SCHOOL PROGRAM
