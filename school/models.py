@@ -320,6 +320,8 @@ class Event(models.Model):
     
 class Program(BaseModel):
     
+    terms = models.ManyToManyField("Terms", verbose_name=_("program_terms"), null=True)
+    
     events = models.ManyToManyField("Event", verbose_name=_("name"), null=True)
     
     academic_start = models.DateField(_("Date school starts"), default=timezone.now)
@@ -367,6 +369,9 @@ class Program(BaseModel):
     def is_currently_active(self):
         today = timezone.now().date()
         return self.academic_start <= today <= self.academic_end
+    
+    def get_active_program():
+        return Program.objects.filter(academic_start__lte=timezone.now().date(), academic_end__gte=timezone.now().date()).first()
 
 class PaymentDetail(models.Model):
     

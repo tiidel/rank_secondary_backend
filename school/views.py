@@ -214,6 +214,18 @@ class ProgramItemView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class YearTermView(APIView):
+    serializer_class = TermsSerializer
+
+    def get(self, request):
+        # Get active program
+        active_program = Program.get_active_program()
+        # Get all terms within start and end date of program
+        terms = Terms.objects.filter(start_date__gte=active_program.academic_start, end_date__lte=active_program.academic_end)
+        
+        serializer = self.serializer_class(terms, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class SocialAPIView(APIView):
     serializer_class = SocialSerializer

@@ -21,6 +21,7 @@ urlpatterns = [
     #SCHOOL PROGRAM
     path('school-programs/', ProgramView.as_view(), name="school_progam"),
     path('school-programs/<str:id>/', ProgramItemView.as_view(), name="school_progam"),
+    path('school-programs/current/terms/', YearTermView.as_view(), name="school_progam"),
     
     #SCHOOL EVENTS
     path('school-year-events/', SchoolEventAPIView.as_view(), name="events_in_program"),
@@ -33,7 +34,7 @@ urlpatterns = [
     path('terms/active/', ActiveTermView.as_view(), name='active_term'),
 
 
-    #TERMS
+    #SEQUENCES
     path('sequences/', SequenceView.as_view(), name="seq"),
 
     
