@@ -96,7 +96,8 @@ urlpatterns = [
     path('students/<str:stud_id>/performance/', StudentsInClassView.as_view(), name='students'),
 
     #TIMETABLE
-    path('timetable/', TimeTableView.as_view(), name='timetable'),
+    path('timetables/', TimeTableView.as_view(), name='timetable'),
+    path('timetables/<int:id>/', TimetableUpdateAPIView.as_view(), name='timetable-update'),
     
 
     # DOWNLOAD 

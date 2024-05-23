@@ -48,6 +48,8 @@ class School(SchoolBaseModel):
     address = models.CharField(_("School Location"), max_length=256)
     
     logo = models.ImageField(upload_to='media/', blank=True, null=True)
+
+    student_reg_charge = models.IntegerField(_("The amount school sets for students to pay as system charges"), null=True, default=1000)
     
     type = models.CharField(_("School type e.g Elementary, Primary etc..."), max_length=256, null=True)
     
@@ -330,6 +332,7 @@ class Program(BaseModel):
     
     is_active = models.BooleanField(_("Date program should terminate"), default=True)
 
+    subscription = models.ForeignKey('Subscription', on_delete=models.CASCADE, null=True, blank=True)
     class Meta:
         
         verbose_name = _("Program")
@@ -548,6 +551,8 @@ class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
     status = models.CharField(_("Marital status"), max_length=50, null=False, blank=False)
+
+    matricule = models.CharField(_("Generate unique matricule for student"), max_length=25, null=True, blank=True)
     
     student_class = models.ForeignKey(Class, on_delete=models.CASCADE)
     
@@ -588,7 +593,7 @@ class Student(models.Model):
     
     def get_full_name(self):
         return f"{self.user.first_name} {self.user.last_name}"
-
+    
     def save(self, *args, **kwargs):
 
         created = not self.pk  
@@ -714,6 +719,8 @@ class Grade(models.Model):
 
     grade_list = models.ManyToManyField(StudentSubjects, related_name='student_rank_grades' )
 
+    result_generated = models.BooleanField(_("Result has been generated for the term"), default=False)
+
     def calculate_average(self):
         """Calculate the average grade for the student for the term"""
         total_grades = sum(subject.seq_average for subject in self.grade_list.all())
@@ -750,6 +757,10 @@ class Registration(BaseModel):
     registration_status = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
 
     payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
+
+    charge = models.ForeignKey('ServiceCharge', on_delete=models.SET_NULL, null=True)
+    
+    paid_charges = models.BooleanField(_("Check if user has paid their platform charge before proceeding with registration"), default=False)
     
     is_registered = models.BooleanField(_("Given a school calendar, the date registration expires"), default=False)
 
@@ -786,6 +797,76 @@ class Registration(BaseModel):
         return transaction_id
 
 
+class Subscription(models.Model):
+
+    amount = models.IntegerField()
+
+    payment_date = models.DateField()
+
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+
+    payment_status = models.CharField(max_length=20, blank=True, null=True)
+
+    is_complete = models.BooleanField(default=False)
+
+    subscription_plan = models.CharField(max_length=20, blank=True, null=True)
+
+    created_at = models.DateTimeField(_("create date"), auto_now_add=True)
+
+    created_by = models.CharField( _("Email of user who creates model"), max_length=100, null=True, blank=True)
+
+    class Meta:
+        
+        verbose_name = _("Subscription")
+        
+        verbose_name_plural = _("Subscriptions")
+
+    def __str__(self):
+        return f"{self.transaction_id} {self.amount}"
+    
+    
+
+class ServiceCharge(models.Model):
+
+    amount = models.IntegerField()
+
+    payment_date = models.DateField()
+
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+
+    payment_status = models.CharField(max_length=20, blank=True, null=True)
+
+    is_complete = models.BooleanField(default=False)
+
+    ### NULLABLES ###
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
+
+    depositor = models.CharField(max_length=20, blank=True, null=True)
+    
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+
+    payment_gateway = models.CharField(max_length=50, blank=True, null=True)
+
+    currency = models.CharField(max_length=3, blank=True, null=True)
+
+    reference_number = models.CharField(max_length=50, blank=True, null=True)
+
+    payment_confirmation_date = models.DateField(blank=True, null=True)
+
+    created_at = models.DateTimeField(_("create date"), auto_now_add=True)
+
+    created_by = models.CharField( _("Email of user who creates model"), max_length=100, null=True, blank=True)
+    
+    class Meta:
+        
+        verbose_name = _("ServiceCharge")
+        
+        verbose_name_plural = _("ServiceCharges")
+
+    def __str__(self):
+        return f"{self.transaction_id} {self.amount}"
+    
+
 class Payment(models.Model):
 
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
@@ -818,6 +899,10 @@ class Payment(models.Model):
     payment_confirmation_date = models.DateField(blank=True, null=True)
 
     notes = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(_("create date"), auto_now_add=True)
+
+    created_by = models.CharField( _("Email of user who creates model"), max_length=100, null=True, blank=True)
     
     class Meta:
         
@@ -869,7 +954,7 @@ class Timetable(models.Model):
             
         term = models.ForeignKey(Terms, on_delete=models.CASCADE)
 
-        class_instance = models.ForeignKey(Class, on_delete=models.CASCADE)
+        class_instance = models.ForeignKey(Class, on_delete=models.CASCADE, null=True)
         
         day = models.CharField(_("Day of the week"), max_length=50, choices=DAY_CHOICES)
         
@@ -887,6 +972,7 @@ class Timetable(models.Model):
             
         def __str__(self):
             return f"{self.day} - {self.start_time} - {self.end_time}"
+
 
 
 class Attendance(models.Model):

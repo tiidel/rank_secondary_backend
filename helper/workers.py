@@ -39,6 +39,18 @@ def send_email_with_template(data: dict, template_name: str, context: dict, reci
 
 
 
+@app.task
+def send_whatsapp_message_with_api(message: str, phone: str):
+    
+    try:
+        # Send whatsapp message to the that number
+        pass
+
+    except Exception as e:
+        print(e)
+
+
+
 
 
 

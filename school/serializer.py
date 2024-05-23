@@ -199,7 +199,6 @@ class SchoolStaffApplySerializer(serializers.ModelSerializer):
 class TimetableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Timetable
-        depth = 1
         fields = '__all__'
 
 # =========== STUDENT SUBJECT SERIALIZER =================

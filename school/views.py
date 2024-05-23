@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.db import transaction
 from rest_framework_simplejwt import tokens
 from rest_framework.views import APIView, status, Response
 from rest_framework.pagination import PageNumberPagination
@@ -867,6 +868,20 @@ class InvitationView(APIView):
             'email_subject': 'You have been invited to join our school',
         }
         send_email_with_template.delay( sub, 'staff_invite.html', context, recipient_list=[data['recipient_email']] )
+    
+    def send_whatsapp_message(self, data, tenant):
+        context = {
+            'data': data,
+            'school': tenant,
+            'code': data['invitation_code'],
+            'role': data['role']
+        }
+    
+        code = data['invitation_code']
+        url = f"https://rankafrica.net/wa-link/accept?school={tenant}&code={code}"
+        message= 'You have been invited to join our school. Click on the link to accept the invitation. ' + url
+        
+        send_whatsapp_message_with_api.delay( message,  recipient_list=[data['recipient_phone']] )
 
 
     def get(self, request):
@@ -1895,14 +1910,116 @@ class TimeTableView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        if not isinstance(request.data, list):
+            return Response({"message": "Request data should be a list of terms"}, status=status.HTTP_400_BAD_REQUEST)
+
+        timetable_data = request.data
+        created_timetable = []
+        errors = []
+
+        with transaction.atomic():
+            for time_info in timetable_data:
+                subject_id = time_info.pop('subject', None)
+                cls_id = time_info.pop('class', None)
+                term_id = time_info.pop('term', None)
+
+                subject = Subject.objects.filter(id=subject_id).first()
+                cls = Class.objects.filter(id=cls_id).first()
+                term = Terms.objects.filter(id=term_id).first()
+
+                if not subject:
+                    errors.append({"message": f"Invalid subject with id {subject_id}"})
+                    continue
+
+                if not cls:
+                    errors.append({"message": f"Invalid class with id {cls_id}"})
+                    continue
+
+                if not term:
+                    errors.append({"message": f"Invalid term with id {term_id}"})
+                    continue
+
+                instructor = subject.instructor
+
+                existing_schedules = Timetable.objects.filter(
+                    subject__instructor=instructor,
+                    day=time_info['day'],
+                    start_time__lt=time_info['end_time'],
+                    end_time__gt=time_info['start_time']
+                ).exists()
+
+                if existing_schedules:
+                    errors.append({"message": "The instructor already has a class scheduled during this time."})
+                    continue
+
+                overlapping_timetables = Timetable.objects.filter(
+                    class_instance=cls,
+                    term=term,
+                    day=time_info['day'],
+                    start_time__lt=time_info['end_time'],
+                    end_time__gt=time_info['start_time']
+                ).exists()
+
+                if overlapping_timetables:
+                    errors.append({
+                        "message": f"Overlapping timetable entry exists for class {cls_id} on {time_info['day']} "
+                                   f"from {time_info['start_time']} to {time_info['end_time']} during term {term_id}."
+                    })
+                    continue
+
+                time_info['class_instance'] = cls.id 
+                time_info['term'] = term.id 
+                time_info['subject'] = subject.id  
+
+                serializer = self.serializer_class(data=time_info)
+
+                if serializer.is_valid():
+                    serializer.save()
+                    created_timetable.append(serializer.data)
+                else:
+                    errors.append(serializer.errors)
+
+            if errors:
+                return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(created_timetable, status=status.HTTP_201_CREATED)
+
+class TimetableUpdateAPIView(APIView):
+    serializer_class = TimetableSerializer
+    
+    def find_timetable_by_id(self, id):
+        return Timetable.objects.filter(id=id).first()
+        
+    def get(self, request, id):
+        timetable = self.find_timetable_by_id(id)
+
+        if not timetable:
+            return Response({"message": "Timetable item not found"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(timetable)
+        return Response(serializer.data)
+    
+    def delete(self, request, id):
+        timetable = self.find_timetable_by_id(id)
+
+        if not timetable:
+            return Response({"message": "Timetable item not found"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        timetable.delete()
+        return Response({"message": "Timetable entry deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+    def put(self, request, id):
+        timetable = self.find_timetable_by_id(id)
+
+        if not timetable:
+            return Response({"message": "Timetable item not found"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.serializer_class(timetable, data=request.data, partial=True)
 
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
