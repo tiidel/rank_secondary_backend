@@ -1,12 +1,10 @@
 {% load math_filters %}
-{% load bootstrap4 %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1200px, initial-scale=1.0">
-    <title>invoice</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <title>report card template one</title>
 </head>
 <style>
     nav {
@@ -30,7 +28,7 @@
     }
 
     td, th {
-        border: 1px dashed #000;
+        border: 1px solid #000;
         text-align: center;
         text-align: left;
         padding: 8px;
@@ -46,31 +44,25 @@
     .flex_title * {
         text-align: center;
     }
-    /* -------------- UPDATED CSS ---------------- */
+    
     .name_section *{
         font-size: 14px !important;
     }
-    .name_section {
-        font-weight: bold;
-    }
-    .flex_head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 50%;
-        margin-top: 5px;
-    }
-    .flex_head_inner {
-        display: flex;
-        align-items: center;
-        width: 100%;
+    
+    .header_section {
         background-color: blue;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        width: 60%;
     }
-    .flex_head_inner p {
-        margin-bottom: 0px !important;
-        margin-right: 10px;
+    .header_section div {
+        width: 40%;
+        display: flex;
+        flex-direction: row;
+        background-color: orange;
     }
-    /* -------------- END OF UPDATE ------------------- */
+   
    
 
 
@@ -79,61 +71,55 @@
     <div class="page">
         <div class="container">
             <nav class="h-25">
-                <div class="w-100 d-flex flex-column flex_title align-items-center">
+                <div class="w-100 d-flex flex-row flex_title align-items-center">
                     <p class="font-weight-bold h4">REPORT CARD</p>
                     <p class="font-weight-bold mb-0">2023 - 2024</p>
-                    <p class="font-weight-bold mb-0">1st Term</p>
+                    <p class="font-weight-bold mb-0">Term {{ term }} - {{ term.end_date }} </p>
                 </div>
-            </nav><!-------- HEADER NAV-->
+            </nav>
             
-
-            <!-- UPDATE TO CSS--------------------- -->
             
             <section class="mt-4 name_section">
-                <p class="mb-0">Name: {{ student }}</p>
-                <div class="flex_head">
-                    <div class="flex_head_inner ">
-                        <p>Ne le: </p>
-                        <p>10/12/2007</p>
+                <p class="mb-0 h3 font-weight-bold">FULL NAME: {{ student }}</p>
+                
+                <div style="display: flex; position: relative; justify-content: space-between; ">
+                    <div style="width: 40%;">
+                        <div class="">
+                            <span>DATE OF BIRTH: </span>
+                            <span style="margin-left: 1rem;">{{ student.user.date_of_birth }}</span>
+                        </div>
                     </div>
-                    <div class="flex_head_inner">
-                        <p>A: </p>
-                        <p>Unknown</p>
+                    <div style="position: absolute; left: 40%; top: 0%; width: 40%; height: 100%; margin-bottom: 1rem;">
+                        <div class="">
+                            <span>Matricule: </span>
+                            <span style="margin-left: 1rem;">{{ student.matricule }}</span>
+                        </div>
+                    
                     </div>
                 </div>
                 
-                <div class="flex_head" style="width: 75%;">
-                    <div class="flex_head_inner ">
-                        <p>Sexe: </p>
-                        <p>{{  student.user.gender }}</p>
-
+                
+                <div style="display: flex; position: relative; justify-content: space-between; margin-bottom: 2rem;">
+                    <div style="width: 40%;">
+                        <div class="">
+                            <span>SEX: </span>
+                            <span style="margin-left: 1rem;">{{  student.user.gender }}</span>
+                        </div>
                     </div>
-                    <div class="flex_head_inner">
-                        <p>Class: </p>
-                        <p> {{ student.student_class.level.name }} - {{ student.student_class.class_name }}</p>
-                    </div>
-                    <div class="flex_head_inner">
-                        <p>Department: </p>
-                        <p>{{ student.student_class.level.departments.name }}</p>
+                    <div style="position: absolute; left: 40%; top: 0%; width: 40%; height: 100%; ">
+                        <div class="">
+                            <span>Class: </span>
+                            <span style="margin-left: 1rem; text-transform: capitalize;">{{ student.student_class.level.name }} - {{ student.student_class.class_name }}</span>
+                        </div>
+                    
                     </div>
                 </div>
-                <!-- END OF UPDATE--------------------- -->
-
                 
-            </section><!----------- NAME SECTION -->
+                
+            </section>
 
             <section class="mt-3" >
                 <table>
-                    <!-- <tr>
-                        <th style="width: 275px;" colspan="2">Subject</th>
-                        <th>Eval 1</th>
-                        <th>Eval 2</th>
-                        <th>Average</th>
-                        <th>Coeff</th>
-                        <th>Total</th>
-                        <th>Rank</th>
-                        <th>Appreciation</th>
-                    </tr> -->
                     <tr>
                         <th style="width: 275px;" colspan="2">Subject</th>
                         {% for sequence_id, grades in grades_by_sequence.items %}
@@ -179,14 +165,14 @@
 
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;" colspan="6">TOTAL: </td>
-                        <td>28</td>
+                        <td>{{ total_coef }}</td>
                         <td>330,82</td>
                         <td></td>
                     </tr>
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;" colspan="3">AVERAGE: </td>
                         <td style="font-weight: 900;" colspan="4">{{ average }}</td>
-                        <td>RANK:</td>
+                        <td>POSITION:</td>
                         <td style="font-weight: 900;">{{ position }}<sup>th</sup> / 26</td>
                     </tr>
 
@@ -195,23 +181,23 @@
                         <td style="font-weight: 900;" colspan="5">Very Good </td>
                         <td></td>
                         <td></td>
-                        <td rowspan="2" colspan="5"><p class="font-weight-bold">le 15 novembre 2023,</p> Le Directeur</td>
+                        <td rowspan="2" colspan="5"><p class="font-weight-bold">12th Jue 2024,</p> The Director</td>
                     </tr>
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;">REMARK: </td>
-                        <td style="font-weight: 900;" colspan="5">EXCELLENT </td>
+                        <td style="font-weight: 900;" colspan="5"> </td>
                         <td></td>
                         <td></td>
                     </tr>
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;" rowspan="3">CLASS  : </td>
                         <td style="font-weight: 900; text-align: left !important; " colspan="4">Worst Average:  </td>
-                        <td colspan="2">0.00</td>
+                        <td colspan="2">{{ min_average }}</td>
                         <td></td>
                     </tr>
                     <tr>
                         <td style="font-weight: 900;" colspan="4">Best Average:  </td>
-                        <td colspan="2">14.13</td>
+                        <td colspan="2">{{ min_average }}</td>
                         <td></td>
                     </tr>
                     <tr>
@@ -226,8 +212,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
+    
 
 </body>
 </html>

@@ -1076,11 +1076,12 @@ class StaffView(APIView):
         return staff
     
     def assign_user_to_group(self, user, role):
-        group = Group.objects.get(name__iexact=role)
-        if group:
-            return group.user_set.add(user)
-        return Response({"message": "This is not a valid user role in your school"}, status=status.HTTP_400_BAD_REQUEST)
-
+        try:
+            group = Group.objects.get(name__iexact=role)
+            group.user_set.add(user)
+        except Group.DoesNotExist:
+            raise ValueError("This is not a valid user role in your school")
+        
     def get(self, request):
         teachers = Staff.objects.filter(is_deleted=False)
         serializer = self.serializer_class(teachers, many=True)
@@ -1102,38 +1103,71 @@ class StaffView(APIView):
             recipient_list=[user['email']]
         )
 
+    def send_password_email(self, user, role, password):
+        context = {
+            'user': user,
+            'role': role,
+            'password': password
+        }
+        send_email_with_template.delay(
+            data={
+                'email_subject': '[IMPORTANT] your account password',
+            },
+            template_name='staff_password.html',
+            context=context,
+            recipient_list=[user['email']]
+        )
+
+    def generate_random_password(self, length=8):
+        characters = string.ascii_letters + string.digits
+        return ''.join(random.choice(characters) for i in range(length))
+
     def post(self, request):
-        try:
-            staff_role = request.data.get('role')
-            email = request.data.get('email')
-            user_exist = User.objects.filter(email=email).first()
-            
-            if user_exist:
-                return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            if not staff_role:
-                return Response({"message": "You must provide a staff role"}, status=status.HTTP_400_BAD_REQUEST)
-            
+        
+        with transaction.atomic():
+            try:
+                staff_role = request.data.get('role')
+                email = request.data.get('email')
+                user_exist = User.objects.filter(email=email).first()
+                
+                if user_exist:
+                    return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if not staff_role:
+                    return Response({"message": "You must provide a staff role"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                password = request.data.get('password') or self.generate_random_password()
+                user_data = request.data.copy()
+                user_data['password'] = password
+                user_data['is_active'] = True
 
-            user = User.objects.create_user(**request.data)
-            if not user:
-                return Response( {"message": "Unable to create user. Please fill details correctly"},  status=status.HTTP_400_BAD_REQUEST)
-            
-            self.assign_user_to_group(user, staff_role)
-            staff_created = self.create_staff_membership(user, staff_role)
-            
-            if staff_created:
-                user_serializer = LoginSerializer(user)
+                user = User.objects.create_user(**user_data)
+                print('generated password is: ', password)
 
-                tenant = request.tenant.schema_name
-                self.send_registration_mail(user_serializer.data, staff_role, tenant)
+                if not user:
+                    return Response( {"message": "Unable to create user. Please fill details correctly"},  status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    self.assign_user_to_group(user, staff_role)
+                except ValueError as error:
+                    user.delete() 
+                    return Response({"message": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
-                return Response( user_serializer.data,  status=status.HTTP_201_CREATED)
-            return Response( "error creating staff",  status=status.HTTP_400_BAD_REQUEST)
+                staff_created = self.create_staff_membership(user, staff_role)
+                
+                if staff_created:
+                    user_serializer = LoginSerializer(user)
 
-        except Exception as error:
-            print(error)
-            return Response( status=status.HTTP_400_BAD_REQUEST)
+                    tenant = request.tenant.schema_name
+                    self.send_registration_mail(user_serializer.data, staff_role, tenant)
+                    self.send_password_email(user_serializer.data, staff_role, password)
+
+                    return Response( user_serializer.data,  status=status.HTTP_201_CREATED)
+                return Response( "error creating staff",  status=status.HTTP_400_BAD_REQUEST)
+
+            except Exception as error:
+                print(f"Error occurred: {error}")
+                return Response({"message": "An error occurred while processing your request"}, status=status.HTTP_400_BAD_REQUEST)
  
 
 class StaffItemView(APIView):
@@ -1393,7 +1427,8 @@ class StudentsView(APIView):
         request.data.pop('student_level', None)
         request.data['student_class'] = student_class
 
-        student = Student.objects.create(user=user, **request.data)
+        student = Student(user=user, **request.data)
+        student.save(request=request)
         serializer = self.serializer_class(student)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1771,6 +1806,21 @@ class GradeStudentForAllSubjectAPIView(APIView):
             return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
         
 
+
+class TeacherSubjectsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.user.id
+        
+        teacher = Staff.objects.filter(user=user_id).first()
+        if not teacher:
+            return Response({"message": "No teacher with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        subjects = Subject.objects.filter(instructor=teacher)
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
 class StudentResultsView(APIView):
     def get(self, request):

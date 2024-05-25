@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from datetime import date, datetime
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -544,6 +544,16 @@ class Subject(models.Model):
         
         self.cls.subjects.add(self)
 
+class MatriculeCounter(models.Model):
+    tenant = models.CharField(max_length=255)
+    level = models.CharField(max_length=255)
+    last_number = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('tenant', 'level')
+
+    def __str__(self):
+        return f"{self.tenant} - {self.level} - {self.last_number}"
 
 
 class Student(models.Model):
@@ -594,11 +604,33 @@ class Student(models.Model):
     def get_full_name(self):
         return f"{self.user.first_name} {self.user.last_name}"
     
-    def save(self, *args, **kwargs):
-
-        created = not self.pk  
-        super().save(*args, **kwargs)
+    def generate_matricule(self, tenant):
         
+        year = datetime.now().year % 100  
+        level_char = self.student_class.level.name[0].upper() 
+
+        with transaction.atomic():
+            matricule_counter, created = MatriculeCounter.objects.get_or_create(
+                tenant=tenant,
+                level=level_char,
+                defaults={'last_number': 0}
+            )
+            matricule_counter.last_number += 1
+            matricule_counter.save()
+
+        self.matricule = f"{tenant}{year:02d}{level_char}{matricule_counter.last_number:05d}"
+
+    def save(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        created = not self.pk  
+        
+        super().save(*args, **kwargs)
+
+        if created and request:
+            tenant = request.tenant.schema_name
+            self.generate_matricule(tenant)
+            super().save(update_fields=['matricule'])
+            
         if created or 'student_class' in kwargs.get('update_fields', []):
             class_instance = self.student_class
 

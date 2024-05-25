@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Report Sheet</title>
+    <style>
+        body {
+            font-family: "Times New Roman", Times, serif;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+        .container {
+            width: calc(210mm - 1cm);
+            height: calc(297mm - 1cm);
+            padding: 0;
+            border: 1px solid #000;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .header, .footer {
+            text-align: center;
+            margin-bottom: 5mm;
+        }
+        .header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 5mm;
+        }
+        .footer {
+            border-top: 2px solid #000;
+            padding-top: 5mm;
+            position: absolute;
+            bottom: 1cm;
+            width: calc(100% - 2cm);
+        }
+        .header h1, .header h2, .header h3 {
+            margin: 0;
+        }
+        .header h1 {
+            font-size: 12px;
+        }
+        .header h2 {
+            background-color: #000;
+            color: #fff;
+            font-size: 24px;
+            padding: 2px 0;
+        }
+        .header h3 {
+            font-size: 12px;
+        }
+        .content {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .content th, .content td {
+            border: 1px solid #000;
+            padding: 2px;
+            text-align: center;
+        }
+        .content th {
+            background-color: #f0f0f0;
+        }
+        .content td:nth-child(1) {
+            text-align: left;
+        }
+        .content .remarks {
+            height: 40px;
+        }
+        .bottom-section {
+            margin-top: 5mm;
+        }
+        .bottom-section div {
+            display: flex;
+            justify-content: space-between;
+        }
+        .bottom-section div div {
+            width: 32%;
+        }
+        .signature {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10mm;
+        }
+        .signature div {
+            width: 48%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 10px;">MINISTRY OF SECONDARY EDUCATION / MINISTERE DES ENSEIGNEMENTS SECONDAIRES</h1>
+            <h2>CAMEROON COLLEGE OF ART, SCIENCE AND TECHNOLOGY (CCAST) - BAMBILI</h2>
+            <h3 style="margin: 10px;">ACADEMIC REPORT SHEET / BULLETIN DE NOTES</h3>
+            <div style="display: flex; justify-content: space-between; margin-top: 5mm;">
+                <div>
+                    <p>THIRD TERM / TROISIEME TRIMESTRE</p>
+                </div>
+                <div>
+                    <p>Start of next term: [Date]</p>
+                </div>
+            </div>
+        </div>
+
+        <table class="content">
+            <tr>
+                <th>Subjects and Tutor's Names</th>
+                <th>Eval 1</th>
+                <th>Eval 2</th>
+                <th>AVG</th>
+                <th>Coef.</th>
+                <th>Total (M x C)</th>
+                <th>Position / Rang</th>
+                <th>Teacher's Remarks / Signature</th>
+            </tr>
+            <!-- Repeat the following <tr> block 20 times with random marks -->
+            <tr>
+                <td class="remarks">Subject 1</td>
+                <td>12.00</td>
+                <td>15.00</td>
+                <td>13.00</td>
+                <td>2</td>
+                <td>80</td>
+                <td>5</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 2</td>
+                <td>10.00</td>
+                <td>11.00</td>
+                <td>12.00</td>
+                <td>3</td>
+                <td>99</td>
+                <td>10</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 3</td>
+                <td>14.00</td>
+                <td>13.00</td>
+                <td>12.00</td>
+                <td>2</td>
+                <td>78</td>
+                <td>8</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 4</td>
+                <td>15.00</td>
+                <td>14.00</td>
+                <td>13.00</td>
+                <td>3</td>
+                <td>126</td>
+                <td>4</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 5</td>
+                <td>16.00</td>
+                <td>15.00</td>
+                <td>14.00</td>
+                <td>1</td>
+                <td>45</td>
+                <td>6</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 6</td>
+                <td>10.00</td>
+                <td>9.00</td>
+                <td>11.00</td>
+                <td>2</td>
+                <td>60</td>
+                <td>15</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 7</td>
+                <td>18.00</td>
+                <td>17.00</td>
+                <td>16.00</td>
+                <td>2</td>
+                <td>102</td>
+                <td>3</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 8</td>
+                <td>12.00</td>
+                <td>11.00</td>
+                <td>10.00</td>
+                <td>2</td>
+                <td>66</td>
+                <td>14</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 9</td>
+                <td>14.00</td>
+                <td>13.00</td>
+                <td>12.00</td>
+                <td>3</td>
+                <td>117</td>
+                <td>7</td>
+                <td class="remarks"></td>
+            </tr>
+            <tr>
+                <td class="remarks">Subject 10</td>
+                <td>16.00</td>
+                <td>15.00</td>
+                <td>14.00</td>
+                <td>1</td>
+                <td>45</td>
+                <td>6</td>
+                <td class="remarks"></td>
+            </tr>
+            
+            <tr>
+                <td colspan="2">Best Average:</td>
+                <td colspan="2">13.63 / 20</td>
+                <td colspan="2">Worst Average:</td>
+                <td colspan="2">14.77 / 20</td>
+            </tr>
+            <tr>
+                <td colspan="2">3rd Term Average:</td>
+                <td colspan="2">12.63 / 20</td>
+                <td colspan="2">3rd Term Class Avg:</td>
+                <td colspan="2">9.52 / 20</td>
+            </tr>
+            <tr>
+                <td colspan="4">Student Position:</td>
+                <td colspan="4">6th / 70</td>
+            </tr>
+            <tr>
+                <td colspan="4">Student Average:</td>
+                <td colspan="4">13.67 / 20</td>
+            </tr>
+            <tr>
+                <th colspan="4">GENERAL CONDUCT / CONDUITE GENERALE</th>
+                <th colspan="4">ACADEMIC WORK / TRAVAIL</th>
+            </tr>
+            <tr>
+                <td>Lateness / Retard</td>
+                <td colspan="3"></td>
+                <td>Honour roll / Tableau d'Honneur</td>
+                <td style="color: #fff; background-color: #000;" rowspan="2" colspan="3">
+                    <div style="font-size: large; text-transform: uppercase;">Principal Remark</div>
+                    <div>Oberseration</div>
+                </td>
+            </tr>
+            <tr>
+                <td>Punishment / Consigne</td>
+                <td colspan="3"></td>
+                <td>Credit / Encouragement</td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td>Absences</td>
+                <td colspan="3"></td>
+                <td>Distinction</td>
+                <td colspan="3" rowspan="8">
+                    
+                </td>
+            </tr>
+            <tr>
+                <td>Warning / Avertissement</td>
+                <td colspan="3"></td>
+                <td>Warning / Avertissement</td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td>Serious Warning / Blame</td>
+                <td colspan="3"></td>
+                <td>Serious Warning / Blame</td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td>Suspension in days</td>
+                <td colspan="3"></td>
+                <td>Results / Resultats</td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td>Exclusion</td>
+                <td colspan="3"></td>
+                <td></td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td colspan="4">Principal's Remark:</td>
+                <td colspan="4">Promoted / Admis</td>
+            </tr>
+            <tr>
+                <td colspan="4">Date:</td>
+                <td colspan="4"></td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

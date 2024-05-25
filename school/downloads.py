@@ -4,12 +4,14 @@ import zipfile
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from rest_framework.decorators import api_view
-from .models import Grade, Student, Guardian, Staff, Subject, Class, User
+from .models import Grade, Student, Guardian, Staff, Subject, Class, User, Terms, School
 from rest_framework.views import APIView, status, Response
 from wkhtmltopdf.views import PDFTemplateResponse
 from collections import defaultdict
+from django.db.models import Max, Min
 
 from django.shortcuts import get_object_or_404
+
 
 @api_view(['GET'])
 def download_zip(request, cls, term):
@@ -116,9 +118,10 @@ def download_users_as_csv(request):
 
 @api_view(['GET'])
 def download_student_result_for_term(request,cls_id, term_id, stud_id):
+    term = get_object_or_404(Terms, id=term_id)
     student_grades = get_object_or_404(Grade, classroom=cls_id, student=stud_id, term=term_id)
     
-    grade_list = student_grades.grade_list.all()
+    grade_list = sorted(student_grades.grade_list.all(), key=lambda grade: grade.sequence.id)
 
     grades_by_sequence = {}
     for grade in grade_list:
@@ -128,7 +131,6 @@ def download_student_result_for_term(request,cls_id, term_id, stud_id):
 
 
     subject_data = defaultdict(list)
-
     for entry in grade_list:
         subject = entry.subject.name
         sequence = entry.sequence
@@ -137,12 +139,32 @@ def download_student_result_for_term(request,cls_id, term_id, stud_id):
         }
         subject_data[subject].append(entry)
 
+    total_coef = 0
+    total_weight = 0
+    for subject, data in subject_data.items():
+        total_coef += data[0].subject.sub_coef
+       
+    
+    # Calculate max and min averages for the given class and term
+    max_min_averages = Grade.objects.filter(classroom=cls_id, term=term_id).aggregate(
+        max_average=Max('average'), 
+        min_average=Min('average')
+    )
+    
+    max_average = max_min_averages['max_average']
+    min_average = max_min_averages['min_average']
+
+    print(max_min_averages)
     ctx = {
             'grades_by_sequence': grades_by_sequence, 
             'results': dict(subject_data),
             'position': student_grades.position, 
             'average': round(student_grades.average, 2), 
-            'student': student_grades.student
+            'student': student_grades.student,
+            "total_coef": total_coef,
+            "term": term,
+            "max_average": max_average,
+            "min_average": min_average
         }
     
     return PDFTemplateResponse(
@@ -152,3 +174,74 @@ def download_student_result_for_term(request,cls_id, term_id, stud_id):
         filename='report_card.pdf'
     )
     return Response({'test response. downloading student data'})
+
+
+
+
+
+@api_view(['GET'])
+def download_all_students_results_for_term(request, cls_id, term_id):
+    school = School.objects.first()
+    students_grades = Grade.objects.filter(classroom=cls_id, term=term_id)
+    
+    all_student_data = []
+
+    for student_grade in students_grades:
+        grade_list = student_grade.grade_list.all()
+        
+        grades_by_sequence = {}
+    
+        subject_data = defaultdict(list)
+        for entry in grade_list:
+            subject = entry.subject.name
+            subject_data[subject].append(entry)
+            sequence = entry.sequence
+            if sequence not in grades_by_sequence:
+                grades_by_sequence[sequence] = []
+
+        student_results = []
+        for subject, grades in subject_data.items():
+            if len(grades) == 2:
+                avg_grade = (grades[0].grade + grades[1].grade) / 2
+                total = avg_grade * grades[0].subject.sub_coef
+            else:
+                avg_grade = grades[0].grade
+                total = avg_grade * grades[0].subject.sub_coef
+
+            appreciation = "Poor"
+            if avg_grade > 18:
+                appreciation = "Excellent"
+            elif avg_grade > 15:
+                appreciation = "Very Good"
+            elif avg_grade > 13:
+                appreciation = "Good"
+            elif avg_grade > 9:
+                appreciation = "Average"
+
+            student_results.append({
+                "subject_name": grades[0].subject.name,
+                "grades": grades,
+                "avg_grade": avg_grade,
+                "sub_coef": grades[0].subject.sub_coef,
+                "total": total,
+                "appreciation": appreciation
+            })
+        
+        all_student_data.append({
+            "grade_sequences": grades_by_sequence,
+            "student": student_grade.student,
+            "results": student_results,
+            "position": student_grade.position,
+            "average": round(student_grade.average, 2)
+        })
+    
+    ctx = {
+        'all_student_data': all_student_data
+    }
+    
+    return PDFTemplateResponse(
+        request=request,
+        template='results/multi_student_template.html',
+        context=ctx,
+        filename='report_cards.pdf'
+    )
