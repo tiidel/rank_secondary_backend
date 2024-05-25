@@ -84,7 +84,7 @@ urlpatterns = [
     path('grades/student/<str:cls_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
     #TEACHER REQUESTS
-    path('me/subjects/', TeacherSubjectsAPIView.as_view(), name='fetch_my_subjects'),
+    path('me/subjects/<str:term_id>/', TeacherSubjectsAPIView.as_view(), name='fetch_my_subjects'),
 
     # GUARDIANS
     path('guardians/', GuardiansView.as_view(), name="guardian_view"),

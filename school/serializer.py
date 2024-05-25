@@ -123,6 +123,13 @@ class SubjectSerializer(serializers.ModelSerializer):
         model = Subject
         fields = '__all__'
 
+class MySubjectSerializer(serializers.ModelSerializer):
+    instructor = StaffSerializer()
+    class Meta:
+        model = Subject
+        depth = 1
+        fields = '__all__'
+
 class SubjectRequestSerializer(serializers.ModelSerializer):
     instructor = StaffSerializer()
     class Meta:

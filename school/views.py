@@ -14,7 +14,7 @@ from .models import *
 from .serializer import *
 from core.permissions import *
 from helper.enum import JobApplicantStatus
-from django.db.models import Q
+from django.db.models import Count, Q, F
 from helper.workers import *
 from core.models import User
 from core.serializers import LoginSerializer
@@ -554,6 +554,7 @@ class ActiveTermView(APIView):
         active_term = Terms.get_active_term()
         if active_term:
             data = {
+                'id': active_term.id,
                 'term_name': active_term.term_name,
                 'start_date': active_term.start_date,
                 'end_date': active_term.end_date
@@ -1810,17 +1811,50 @@ class GradeStudentForAllSubjectAPIView(APIView):
 class TeacherSubjectsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        user_id = request.user.id
+    def get(self, request, term_id):
+        try:
+            term = Terms.objects.filter(id=term_id).first()
+            if not term:
+                return Response({"message": "No term with provided ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user_id = request.user.id
+
+            teacher = Staff.objects.filter(user=user_id).first()
+            if not teacher:
+                return Response({"message": "No teacher with provided ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+            subjects = Subject.objects.filter(instructor=teacher)
+
+            subject_data = []
+
+            for subject in subjects:
+                # Aggregate the total and non-zero grades for the subject in the given term
+                aggregates = StudentSubjects.objects.filter(
+                    subject=subject, sequence__term=term
+                ).aggregate(
+                    total_grades=Count('grade'),
+                    non_zero_grades=Count('grade', filter=Q(grade__gt=0))
+                )
+
+                total_grades = aggregates['total_grades']
+                non_zero_grades = aggregates['non_zero_grades']
+
+                print(non_zero_grades)
+                print(total_grades)
+                # Calculate the percentage of non-zero grades
+                non_zero_percentage = (non_zero_grades / total_grades * 100) if total_grades > 0 else 0
+
+                # Serialize the subject data and include the non-zero grade percentage
+                serialized_subject = MySubjectSerializer(subject).data
+                serialized_subject['non_zero_grade_percentage'] = non_zero_percentage
+                subject_data.append(serialized_subject)
+
+            return Response(subject_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"message": "An error occurred", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        teacher = Staff.objects.filter(user=user_id).first()
-        if not teacher:
-            return Response({"message": "No teacher with provided ID"}, status=status.HTTP_404_NOT_FOUND)
-        
-        subjects = Subject.objects.filter(instructor=teacher)
-        serializer = SubjectSerializer(subjects, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
 
 class StudentResultsView(APIView):
     def get(self, request):
