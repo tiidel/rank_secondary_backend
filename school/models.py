@@ -996,6 +996,7 @@ class Timetable(models.Model):
         
         subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
         
+        daysOfWeek = models.JSONField(_("Days of the week as integers"), default=list)
         class Meta:
             
             verbose_name = _("TimeTable")
@@ -1005,6 +1006,9 @@ class Timetable(models.Model):
         def __str__(self):
             return f"{self.day} - {self.start_time} - {self.end_time}"
 
+        def save(self, *args, **kwargs):
+            self.daysOfWeek = [self.DAY_CHOICES.index((self.day, self.day)) + 1]
+            super().save(*args, **kwargs)
 
 
 class Attendance(models.Model):

@@ -100,6 +100,7 @@ urlpatterns = [
 
     #TIMETABLE
     path('timetables/', TimeTableView.as_view(), name='timetable'),
+    path('timetables/<str:cls_id>/<str:term_id>/', TimeTableFetchView.as_view(), name='timetable'),
     path('timetables/<int:id>/', TimetableUpdateAPIView.as_view(), name='timetable-update'),
     
 

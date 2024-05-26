@@ -1985,6 +1985,22 @@ class JobApplicantsView(APIView):
 # class
 
 
+class TimeTableFetchView(APIView):
+    serializer_class = TimetableFetchSerializer
+
+    def get(self, request, cls_id, term_id):
+        term = Terms.objects.filter(id=term_id).first()
+        cls = Class.objects.filter(id=cls_id).first()
+        if not term:
+            return Response({"message": "No term with provided ID"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+        timetable = Timetable.objects.filter(class_instance=cls, term=term)
+        serializer = self.serializer_class(timetable, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 class TimeTableView(APIView):
     serializer_class = TimetableSerializer
 

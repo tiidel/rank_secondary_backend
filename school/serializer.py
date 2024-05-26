@@ -203,6 +203,7 @@ class SchoolStaffApplySerializer(serializers.ModelSerializer):
         model = SchoolStaffApply
         fields = '__all__'
 
+
 class TimetableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Timetable
@@ -218,4 +219,10 @@ class StudentSubjectForStudentSerializer(serializers.ModelSerializer):
     subject = SubjectWithInstructorSerializer()
     class Meta:
         model = StudentSubjects
+        fields = '__all__'
+
+class TimetableFetchSerializer(serializers.ModelSerializer):
+    subject = SubjectWithInstructorSerializer()
+    class Meta:
+        model = Timetable
         fields = '__all__'
