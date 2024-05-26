@@ -2044,8 +2044,8 @@ class TimeTableView(APIView):
                 existing_schedules = Timetable.objects.filter(
                     subject__instructor=instructor,
                     day=time_info['day'],
-                    start_time__lt=time_info['end_time'],
-                    end_time__gt=time_info['start_time']
+                    startTime__lt=time_info['endTime'],
+                    endTime__gt=time_info['startTime']
                 ).exists()
 
                 if existing_schedules:
@@ -2056,14 +2056,14 @@ class TimeTableView(APIView):
                     class_instance=cls,
                     term=term,
                     day=time_info['day'],
-                    start_time__lt=time_info['end_time'],
-                    end_time__gt=time_info['start_time']
+                    startTime__lt=time_info['endTime'],
+                    endTime__gt=time_info['startTime']
                 ).exists()
 
                 if overlapping_timetables:
                     errors.append({
                         "message": f"Overlapping timetable entry exists for class {cls_id} on {time_info['day']} "
-                                   f"from {time_info['start_time']} to {time_info['end_time']} during term {term_id}."
+                                   f"from {time_info['startTime']} to {time_info['endTime']} during term {term_id}."
                     })
                     continue
 

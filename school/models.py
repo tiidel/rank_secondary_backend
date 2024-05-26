@@ -1004,7 +1004,7 @@ class Timetable(models.Model):
             verbose_name_plural = _("TimeTables")
             
         def __str__(self):
-            return f"{self.day} - {self.start_time} - {self.end_time}"
+            return f"{self.day} - {self.startTime} - {self.endTime}"
 
         def save(self, *args, **kwargs):
             self.daysOfWeek = [self.DAY_CHOICES.index((self.day, self.day)) + 1]
