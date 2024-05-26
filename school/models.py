@@ -990,9 +990,9 @@ class Timetable(models.Model):
         
         day = models.CharField(_("Day of the week"), max_length=50, choices=DAY_CHOICES)
         
-        start_time = models.TimeField(_("Time the class starts"), auto_now=False, auto_now_add=False)
+        startTime = models.TimeField(_("Time the class starts"), auto_now=False, auto_now_add=False)
         
-        end_time = models.TimeField(_("Time the class ends"), auto_now=False, auto_now_add=False)
+        endTime = models.TimeField(_("Time the class ends"), auto_now=False, auto_now_add=False)
         
         subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
         
