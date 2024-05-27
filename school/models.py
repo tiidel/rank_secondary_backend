@@ -903,10 +903,12 @@ class Payment(models.Model):
 
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
 
-    installment_number = models.IntegerField()
+    installment_number = models.IntegerField(null=True, blank=True)
 
     amount = models.IntegerField()
 
+    transaction_count = models.IntegerField(default=0)
+    
     payment_date = models.DateField()
 
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
@@ -945,7 +947,21 @@ class Payment(models.Model):
     def __str__(self):
         return f"{self.transaction_id} {self.amount}"
 
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            self.transaction_id = self.generate_transaction_id()
 
+        super().save(*args, **kwargs)
+
+    def generate_transaction_id(self):
+        current_date = timezone.now().date()
+
+        self.transaction_count += 1
+
+        transaction_id = f'Rank-P{current_date.strftime("%Y%m%d")}{self.transaction_count + 1:09d}'
+        
+        return transaction_id
+    
 
 class Guardian(BaseModel):
     

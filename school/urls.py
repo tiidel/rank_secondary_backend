@@ -3,6 +3,7 @@ from .views import *
 from wkhtmltopdf.views import PDFTemplateView
 from .downloads import *
 from .analyticsApis import *
+from .transactions import verify_payment
 from django.urls import path, include
 
 router = DefaultRouter()
@@ -118,6 +119,7 @@ urlpatterns = [
 
     #PAYMENTS
     path('fee-payments/', RegisterPaymentAPIView.as_view(), name='register_payment'),
+    path('verify-payment/', verify_payment, name='verify-payment'),
 
     # REGISTRATION AND PROMOTION 
     path('promote_student/<int:student_id>/<int:new_class_id>/', PromoteStudentAPIView.as_view(), name='promote_student'),

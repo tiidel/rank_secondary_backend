@@ -71,6 +71,8 @@ SHARED_APPS = [
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS ]
 AUTH_USER_MODEL = 'core.user'
+FLUTTERWAVE_SECRET_KEY = config('FW_SECRET_KEY')
+
 
 MIDDLEWARE = [
     'django_tenants.middleware.main.TenantMainMiddleware',

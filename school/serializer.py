@@ -165,6 +165,11 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registration
         fields = '__all__'
+        
+class FeePaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = '__all__'
 
 class RegistrationFetchSerializer(serializers.ModelSerializer):
     student = StudentSerializer()
