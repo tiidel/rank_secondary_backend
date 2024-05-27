@@ -2213,8 +2213,11 @@ class RegistrationListCreateAPIView(APIView):
         
         cls_reg = ClassFees.objects.filter(cls=student.student_class).first()   
 
+        if not cls_reg:
+            return Response({"error": "Class fee not set for student's class"}, status=status.HTTP_400_BAD_REQUEST)
+        
         cls_reg_serializer = ClassFeeSerializer(cls_reg)
-      
+
             
 
         # Check for existing registration for the active program year
@@ -2232,17 +2235,20 @@ class RegistrationListCreateAPIView(APIView):
 
             serializer = self.serializer_class(existing_registration)
 
-            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_200_OK)
+            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_202_ACCEPTED)
   
         
         # No existing registration, proceed to create a new one
-        request.data['year'] = active_program.id  # Ensure to use the id of the program
+        request.data['year'] = active_program.id  
+        request.data['expected_ammount'] = cls_reg.fee_amount
+        request.data['registration_expiry_date'] = active_program.academic_end
+        request.data['registration_status'] = "none"
         request.data['receiver'] = request.user.id
 
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_202_ACCEPTED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

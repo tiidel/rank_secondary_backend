@@ -782,11 +782,11 @@ class Registration(BaseModel):
 
     is_complete = models.BooleanField(default=False)
 
-    expected_ammount = models.IntegerField(_("The amount student is expected to pay for the class"))
+    expected_ammount = models.IntegerField(_("The amount student is expected to pay for the class"), null=True)
 
     payed_ammount = models.IntegerField(_("Money student has actually paid for the school year"), default=0)
     
-    registration_status = models.CharField(_("fee installment. partial or complete"), choices=FeeInstallments.choices, max_length=50)
+    registration_status = models.CharField(_("fee installment. partial or complete"), null=True, choices=FeeInstallments.choices, max_length=50)
 
     payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
 
@@ -800,7 +800,7 @@ class Registration(BaseModel):
 
     registration_date = models.DateField( auto_now=True)
 
-    registration_expiry_date = models.DateField()
+    registration_expiry_date = models.DateField( auto_now=False, auto_now_add=False, null=True, blank=True)
 
     notes = models.TextField(blank=True, null=True)
 
