@@ -159,8 +159,8 @@ class RequestPasswordReset(GenericAPIView):
                 uidb64 = urlsafe_base64_encode(user_id_bytes)
                 token = PasswordResetTokenGenerator().make_token(user)
 
-                
-                relativeLink = f'/reset-password?uid={uidb64}&token={token}'
+                school = request.tenant.schema_name
+                relativeLink = f'/reset-password?uid={uidb64}&token={token}&school={school}'
                 absurl = FRONTEND_DOMAIN + relativeLink
                 email_body = f'To Reset password for {user.username} user the link below \n {absurl}'
                 data = {
