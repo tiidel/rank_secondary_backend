@@ -1473,6 +1473,44 @@ class StudentsView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+class StudentStatsView(APIView):
+    def get(self, request):
+        # Count male and female students
+        male_students = Student.objects.filter(user__gender='male').count()
+        female_students = Student.objects.filter(user__gender='female').count()
+        active_program = Program.get_active_program()
+        # Count students in each class
+        students_in_classes = Class.objects.annotate(num_students=Count('students'))
+
+        class_counts = {
+            class_obj.level.name + " " + class_obj.class_name: {
+                'class_id': class_obj.id,
+                'student_count': class_obj.num_students
+            }
+            for class_obj in students_in_classes
+        }
+
+        partial_registrations = Registration.objects.filter(year=active_program.id, registration_status__in=[
+            FeeInstallments.First, FeeInstallments.Second
+        ]).count()
+        complete_registrations = Registration.objects.filter(registration_status=FeeInstallments.Complete).count()
+        not_registered = Student.objects.filter(registration__isnull=True).count()
+
+
+        data = {
+            'male_students': male_students,
+            'female_students': female_students,
+            'students_in_classes': class_counts,
+            'registrations': {
+                'partial': partial_registrations,
+                'complete': complete_registrations,
+                'not_registered': not_registered,
+            }
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+    
+    
 class StudentView(APIView):
     serializer_class = StudentSerializer
     def get(self, request, stud_id):

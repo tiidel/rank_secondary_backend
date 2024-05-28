@@ -97,6 +97,7 @@ urlpatterns = [
 
     #STUDENTS
     path('students/', StudentsView.as_view(), name='students'),
+    path('analytics/students/', StudentStatsView.as_view(), name='students'),
     path('students/<str:stud_id>/', StudentView.as_view(), name='students'),
     path('students/subjects/<str:stud_id>/', StudentsSubjectsView.as_view(), name='students_subjects'),
     path('students/class/<str:cls_id>/', StudentsInClassView.as_view(), name='students'),
