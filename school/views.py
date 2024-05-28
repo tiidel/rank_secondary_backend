@@ -265,6 +265,44 @@ class PaymentAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
+class SubscriptionAPIView(APIView):
+    serializer_class = ProgramSubscriptionSerializer
+
+    def create_subscription(self, request):
+        return Subscription.objects.create(**request.data)
+    
+    def get(self, request):
+        subscriptions = Program.objects.all()
+        serializer = self.serializer_class(subscriptions, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        active_program = Program.get_active_program()
+
+        if not active_program:
+            return Response({'message': 'You have no active program'}, status=status.HTTP_412_PRECONDITION_FAILED)
+
+        subscription = active_program.subscription
+        
+        if not subscription:
+            try:
+                subscription_response = self.create_subscription(request)
+                active_program.subscription = subscription_response
+
+            except Exception as error:
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            transaction_id = subscription.generate_transaction_id()
+            subscription.transaction_id = transaction_id
+            subscription.save()
+        
+        active_program.save()
+
+        serializer = self.serializer_class(active_program)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
 class SchoolEventAPIView(APIView):
     serializer_class = EventSerializer
     def get(self, request):
@@ -1646,9 +1684,46 @@ class GradeStudentView(APIView):
 # GRADE API
 class GradeStudentForSubjectAPIView(APIView):
     """--- GRADE STUDENTS FOR A PARTICULAR TERM ---"""
+    serializer_class = GradeSerializer
+    
+    def calculate_adjusted_student_average(self, grade_data):
+        subject_grades = {}
+        
+        # Accumulate all grades by subject and sequence
+        for grade_item in grade_data["grade_list"]:
+            subject_id = grade_item["subject"]["id"]
+            if subject_id not in subject_grades:
+                subject_grades[subject_id] = {
+                    "total": 0.0,
+                    "count": 0,
+                    "coefficient": grade_item["subject"]["sub_coef"]
+                }
+            
+            subject_grades[subject_id]["total"] += grade_item["grade"]
+            subject_grades[subject_id]["count"] += 1
 
-    def post(self, request, term, subject):
-        term = Terms.objects.filter(id=term).first()
+        # Compute the weighted average for each subject and aggregate
+        weighted_sum = 0
+        coefficient_sum = 0
+        for subject_id, details in subject_grades.items():
+            if details["count"] > 0:
+                subject_average = details["total"] / details["count"]
+                weighted_average = subject_average * details["coefficient"]
+                weighted_sum += weighted_average
+                coefficient_sum += details["coefficient"]
+
+        # Calculate the final average normalized to a scale of 20
+        if coefficient_sum > 0:
+            final_average = (weighted_sum / coefficient_sum) 
+
+        else:
+            final_average = 0
+
+        result = {"avg": final_average, "total": weighted_sum, "coef": coefficient_sum}
+        return result
+    
+    def post(self, request, term_id, subject_id):
+        term = Terms.objects.filter(id=term_id).first()
 
         if not term:
             return Response({"message": "term not found"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1657,7 +1732,7 @@ class GradeStudentForSubjectAPIView(APIView):
         if not term.term_validated and datetime.now().date() < term.end_date:
             return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
         
-        subject = Subject.objects.filter(id=subject).first()
+        subject = Subject.objects.filter(id=subject_id).first()
         if not term or not subject:
             return Response({"message": "Invalid term or subject"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -1667,11 +1742,13 @@ class GradeStudentForSubjectAPIView(APIView):
 
         for data in marks_data:
             student_id = data.get('student')
+            sub_id = data.get('subject')
             sequence = data.get('sequence')
+            student = Student.objects.filter(id=student_id).first()
             try:
-                student_grade = StudentSubjects.objects.get(subject=subject, student=student_id, sequence=sequence)
+                student_grade = StudentSubjects.objects.filter(subject=sub_id, student=student_id, sequence=sequence).first()
                 serializer = StudentSubjectSerializer(instance=student_grade, data=data, partial=True)
-                
+         
                 if serializer.is_valid():
                     serializer.save()
                     updated_grades.append( serializer.data )
@@ -1682,8 +1759,19 @@ class GradeStudentForSubjectAPIView(APIView):
             except StudentSubjects.DoesNotExist:
                 invalid_students.append({"student": student_id, "message": f"Student {student_id} not found for the given subject in the active term"})
 
+            grade = Grade.objects.filter(classroom=student.student_class.id, student=student_id, term=term).first()
+
+            if not grade:
+                return Response({"message": "Grades not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+            grade_data = self.serializer_class(grade)
+            response = self.calculate_adjusted_student_average(grade_data.data)
+        
+            grade.average = response['avg']
+            grade.save()
+
         if invalid_students:
-            return Response({"invalid_students": invalid_students, "graded": updated_grades}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"invalid_students": invalid_students, "graded": updated_grades}, status=status.HTTP_206_PARTIAL_CONTENT)
        
         else:
             return Response({"updated_grades": updated_grades}, status=status.HTTP_201_CREATED)
@@ -1729,8 +1817,6 @@ class GradeStudentForAllSubjectAPIView(APIView):
 
         result = {"avg": final_average, "total": weighted_sum, "coef": coefficient_sum}
         return result
-
-
 
     def get(self, request, cls_id, student_id):
         term = request.GET.get('term')
@@ -1796,9 +1882,6 @@ class GradeStudentForAllSubjectAPIView(APIView):
         response = self.calculate_adjusted_student_average(grade_data.data)
         grade.average = response['avg']
         grade.save()
-
-        print(grade)
-        print(grade.average)
 
         if invalid_subjects:
             return Response({"invalid_subjects": invalid_subjects, "updated_grades": updated_grades}, status=status.HTTP_206_PARTIAL_CONTENT)

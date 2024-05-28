@@ -833,13 +833,15 @@ class Subscription(models.Model):
 
     amount = models.IntegerField()
 
-    payment_date = models.DateField()
+    payment_date = models.DateField( auto_now_add=True)
 
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
 
     payment_status = models.CharField(max_length=20, blank=True, null=True)
 
     is_complete = models.BooleanField(default=False)
+
+    transaction_count = models.IntegerField(default=0)
 
     subscription_plan = models.CharField(max_length=20, blank=True, null=True)
 
@@ -855,6 +857,21 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.transaction_id} {self.amount}"
+    
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            self.transaction_id = self.generate_transaction_id()
+
+        super().save(*args, **kwargs)
+    
+    def generate_transaction_id(self):
+        current_date = timezone.now().date()
+
+        self.transaction_count += 1
+
+        transaction_id = f'Tiidel{current_date.strftime("%Y%m%d")}{self.transaction_count + 1:09d}'
+        
+        return transaction_id
     
     
 
@@ -909,7 +926,7 @@ class Payment(models.Model):
 
     transaction_count = models.IntegerField(default=0)
     
-    payment_date = models.DateField()
+    payment_date = models.DateField(auto_now_add=True)
 
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
 
@@ -1023,7 +1040,7 @@ class Timetable(models.Model):
             return f"{self.day} - {self.startTime} - {self.endTime}"
 
         def save(self, *args, **kwargs):
-            self.daysOfWeek = [self.DAY_CHOICES.index((self.day, self.day)) + 1]
+            self.daysOfWeek = [self.DAY_CHOICES.index((self.day, self.day))]
             super().save(*args, **kwargs)
 
 

@@ -3,13 +3,17 @@ from .views import *
 from wkhtmltopdf.views import PDFTemplateView
 from .downloads import *
 from .analyticsApis import *
-from .transactions import verify_payment
+from .transactions import verify_payment, verify_subscription
 from django.urls import path, include
 
 router = DefaultRouter()
 
 urlpatterns = [
     path('', include(router.urls)),
+
+    # SUBSCRIPTION SYSTEM
+    path('subscribe/', SubscriptionAPIView.as_view(), name="subscription"),
+    path('verify-subscription/', verify_subscription, name="verify_subscription"),
 
     #SOCIAL AND PAYMENT
     path('socials/', SocialAPIView.as_view(), name="socials"),
@@ -81,7 +85,7 @@ urlpatterns = [
     # GRADES
     path('results/', StudentResultsView.as_view(), name='grade_student'),
     path('subject/results/', SubjectResultsView.as_view(), name='grade_student'),
-    path('grades/<str:term>/<str:subject>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
+    path('grades/subject/<str:term_id>/<str:subject_id>/', GradeStudentForSubjectAPIView.as_view(), name='grade_student'),
     path('grades/student/<str:cls_id>/<str:student_id>/', GradeStudentForAllSubjectAPIView.as_view(), name='grade_student_for_all_subjects'),
 
     #TEACHER REQUESTS
