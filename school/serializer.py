@@ -231,6 +231,13 @@ class TimetableSerializer(serializers.ModelSerializer):
         model = Timetable
         fields = '__all__'
 
+class TeacherTimetableSerializer(serializers.ModelSerializer):
+    subject = SubjectSerializer()
+    class_instance = ClassFetchSerializer()
+    class Meta:
+        model = Timetable
+        fields = '__all__'
+
 # =========== STUDENT SUBJECT SERIALIZER =================
 class SubjectWithInstructorSerializer(serializers.ModelSerializer):
     instructor = StaffSerializer()

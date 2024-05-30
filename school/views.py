@@ -2007,7 +2007,7 @@ class TeacherTimeTableAPIView(APIView):
         
         timetable = Timetable.objects.filter(subject__instructor=teacher, term=term)
       
-        serializer = TimetableSerializer(timetable, many=True)
+        serializer = TeacherTimetableSerializer(timetable, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
