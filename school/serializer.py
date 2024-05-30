@@ -177,6 +177,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
         model = Registration
         fields = '__all__'
         
+class RegistrationFilterSerializer(serializers.ModelSerializer):
+    student = StudentSerializer()
+    class Meta:
+        model = Registration
+        fields = '__all__'
+        
 class FeePaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment

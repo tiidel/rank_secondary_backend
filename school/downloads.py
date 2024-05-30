@@ -177,20 +177,21 @@ def download_student_result_for_term(request,cls_id, term_id, stud_id):
 
 
 
-
-
 @api_view(['GET'])
 def download_all_students_results_for_term(request, cls_id, term_id):
     school = School.objects.first()
     students_grades = Grade.objects.filter(classroom=cls_id, term=term_id)
-    
+
     all_student_data = []
+
+    # Dictionary to hold subject-wise grades for all students
+    subject_grades = defaultdict(list)
 
     for student_grade in students_grades:
         grade_list = student_grade.grade_list.all()
-        
+
         grades_by_sequence = {}
-    
+
         subject_data = defaultdict(list)
         for entry in grade_list:
             subject = entry.subject.name
@@ -226,7 +227,10 @@ def download_all_students_results_for_term(request, cls_id, term_id):
                 "total": total,
                 "appreciation": appreciation
             })
-        
+
+            # Append the average grade to the subject_grades dictionary
+            subject_grades[grades[0].subject.name].append((student_grade.student.id, avg_grade))
+
         all_student_data.append({
             "grade_sequences": grades_by_sequence,
             "student": student_grade.student,
@@ -234,11 +238,21 @@ def download_all_students_results_for_term(request, cls_id, term_id):
             "position": student_grade.position,
             "average": round(student_grade.average, 2)
         })
-    
+
+    # Calculate the position of each student in each subject
+    for subject, grades in subject_grades.items():
+        grades.sort(key=lambda x: x[1], reverse=True)  # Sort by grade in descending order
+        for i, (student_id, avg_grade) in enumerate(grades):
+            for student_data in all_student_data:
+                if student_data["student"].id == student_id:
+                    for result in student_data["results"]:
+                        if result["subject_name"] == subject:
+                            result["subject_position"] = i + 1
+
     ctx = {
         'all_student_data': all_student_data
     }
-    
+
     return PDFTemplateResponse(
         request=request,
         template='results/multi_student_template.html',

@@ -63,8 +63,11 @@
 </style>
 <body>
     <h1>Class Report for Term {{ term_id }}</h1>
-    <h2>Max Average: {{ max_average }}</h2>
-    <h2>Min Average: {{ min_average }}</h2>
+    <h2>Best Average: {{ class_max_average }}</h2>
+    <h2>Worst Average: {{ class_min_average }}</h2>
+    <h2>Mean Average: {{ class_mean_average }}</h2>
+    <h2>Best Student: {{ min_average }}</h2>
+    <h2>Best Student: {{ min_average }}</h2>
     
     {% for student_data in all_student_data %}
     <div class="page page-break">
@@ -121,6 +124,7 @@
                         <th>Total</th>
                         <th>Rank</th>
                         <th>Appreciation</th>
+                        <th>Subject Position</th>
                     </tr>
                     {% for result in student_data.results %}
                     <tr>
@@ -133,12 +137,12 @@
                         <td>{{ result.total|floatformat:2 }}</td>
                         <td></td>
                         <td>{{ result.appreciation }}</td>
+                        <td>{{ result.subject_position }}<sup>{% if result.subject_position == 1 %}st{% elif result.subject_position == 2 %}nd{% elif result.subject_position == 3 %}rd{% else %}th{% endif %}</sup></td>
                     </tr>
                     {% endfor %}
                     <tr>
                         <td style="text-align: right !important; font-weight: 900;" colspan="6">TOTAL: </td>
-                        <td>{{ total }}</td>
-                        <td>330.82</td>
+                        <td>{{ student_data.total_weight|floatformat:2 }}</td>
                         <td></td>
                     </tr>
                     <tr>

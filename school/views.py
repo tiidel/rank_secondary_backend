@@ -1767,8 +1767,8 @@ class GradeStudentForSubjectAPIView(APIView):
             return Response({"message": "term not found"}, status=status.HTTP_400_BAD_REQUEST)
 
         # CHECK IF TERM IS VALIDATED OR END DATE LESS THAN TODAY
-        if not term.term_validated and datetime.now().date() < term.end_date:
-            return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
+        # if not term.term_validated and datetime.now().date() < term.end_date:
+        #     return Response({"message": "You can not grade a future term "}, status=status.HTTP_400_BAD_REQUEST)
         
         subject = Subject.objects.filter(id=subject_id).first()
         if not term or not subject:
@@ -2401,7 +2401,62 @@ class RegistrationRetrieveUpdateDestroyAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class FilteredRegistrationsView(APIView):
+    def get(self, request):
+        # Get the filter parameter from the request
+        filter_param = request.query_params.get('status', 'all')
 
+        if filter_param == 'partial':
+            # Filter for partial registrations
+            registrations = Registration.objects.filter(
+                registration_status__in=[FeeInstallments.First, FeeInstallments.Second]
+            )
+            serializer = RegistrationFilterSerializer(registrations, many=True)
+        elif filter_param == 'complete':
+            # Filter for complete registrations
+            registrations = Registration.objects.filter(registration_status=FeeInstallments.Complete)
+            serializer = RegistrationFilterSerializer(registrations, many=True)
+        elif filter_param == 'not_registered':
+            # Filter for students not registered at all
+            # Using Subquery to filter students without any registration
+            students = Student.objects.filter(
+                ~Q(id__in=Registration.objects.values('student_id'))
+            )
+            serializer = StudentSerializer(students, many=True)
+        else:
+            # Fetch all registrations
+            registrations = Registration.objects.all()
+            serializer = RegistrationFilterSerializer(registrations, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FilteredStudentsView(APIView):
+    def get(self, request):
+        try:
+            # Initialize the query
+            query = Q()
+
+            # # Retrieve query parameters
+            gender = request.query_params.get('gender')
+            student_class = request.query_params.get('cls')
+            student_status = request.query_params.get('status')
+
+            if gender:
+                query &= Q(user__gender=gender)
+            if student_class:
+                query &= Q(student_class=student_class)
+            if student_status:
+                query &= Q(status=student_status)
+
+            print(query)
+            students = Student.objects.filter(query)
+
+            serializer = StudentSerializer(students, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PromoteStudentAPIView(APIView):
 

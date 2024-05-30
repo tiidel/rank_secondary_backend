@@ -412,6 +412,8 @@ class Class(models.Model):
 
     class_name = models.CharField(_("e.g form one or lower sixth"), max_length=100)
     
+    formal_name = models.CharField(_("e.g form one or lower sixth"), max_length=100)
+    
     enrolment = models.IntegerField(default=0)
     
     class_range = models.CharField(_("Approximate number of students in class"), max_length=50)
