@@ -63,6 +63,7 @@ urlpatterns = [
     
     #STAFF
     path('staffs/', StaffView.as_view(), name='staff_invitation'),
+    path('staffs/deactivate/<str:id>', DeactivateStaff.as_view(), name='deactivate_staff_account'),
     path('staffs/<str:staff_id>/', StaffItemView.as_view(), name='staff_invitation'),
     path('staffs/<str:staff_id>/change-role/', StaffChangeRole.as_view(), name='staff_invitation'),
     
@@ -90,6 +91,7 @@ urlpatterns = [
 
     #TEACHER REQUESTS
     path('me/subjects/<str:term_id>/', TeacherSubjectsAPIView.as_view(), name='fetch_my_subjects'),
+    path('me/schedule/', TeacherTimeTableAPIView.as_view(), name='fetch_teacher_timetable'),
 
     # GUARDIANS
     path('guardians/', GuardiansView.as_view(), name="guardian_view"),

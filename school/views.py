@@ -1107,6 +1107,22 @@ class ApplicationReaction(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 
+class DeactivateStaff(APIView):
+    serializer_class = StaffSerializer
+    def get_staff_by_id(self, id):
+        staff = Staff.objects.filter(id=id).first()
+        return staff
+    
+    def patch(self, request, id):
+        staff = self.get_staff_by_id(id)
+        if not staff:
+            return Response({"message": "No staff with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        staff.user.is_active = False
+        staff.user.save()
+        staff.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
 class StaffView(APIView):
     serializer_class = StaffSerializer
 
@@ -1976,6 +1992,24 @@ class TeacherSubjectsAPIView(APIView):
             return Response({"message": "An error occurred", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
+class TeacherTimeTableAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.user.id
+        teacher = Staff.objects.filter(user=user_id).first()
+        if not teacher:
+            return Response({"message": "No teacher with provided ID"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        term = Terms.get_active_term()
+        if not term:
+            return Response({"message": "No active term found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        timetable = Timetable.objects.filter(subject__instructor=teacher, term=term)
+      
+        serializer = TimetableSerializer(timetable, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
 class StudentResultsView(APIView):
     def get(self, request):
