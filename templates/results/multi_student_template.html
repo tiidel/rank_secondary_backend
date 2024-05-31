@@ -28,9 +28,13 @@
     }
     th, td {
         text-align: center !important;
-        border: 1px solid #000;
-        padding: 8px;
+        border: 2px solid #000;
+        padding: 10px;
         font-size: 14px;
+    }
+    .principal_column {
+        padding: 0px;
+        font-size: 1.2rem;
     }
     th:nth-child(1), td:nth-child(1) {
         text-align: left !important;
@@ -60,6 +64,18 @@
         flex-direction: row;
         background-color: orange;
     }
+    .section_title {
+        color: #fff;
+        background-color: #000;
+        text-align: center;
+        padding: 1rem;
+        margin-bottom: 0px;
+    }
+    
+    .section_title.small {
+        font-size: 1.2em;
+    }
+    
 </style>
 <body>
     <h1>Class Report for Term {{ term_id }}</h1>
@@ -124,7 +140,6 @@
                         <th>Total</th>
                         <th>Rank</th>
                         <th>Appreciation</th>
-                        <th>Subject Position</th>
                     </tr>
                     {% for result in student_data.results %}
                     <tr>
@@ -135,9 +150,8 @@
                         <td>{{ result.avg_grade|floatformat:2 }}</td>
                         <td>{{ result.sub_coef }}</td>
                         <td>{{ result.total|floatformat:2 }}</td>
-                        <td></td>
-                        <td>{{ result.appreciation }}</td>
                         <td>{{ result.subject_position }}<sup>{% if result.subject_position == 1 %}st{% elif result.subject_position == 2 %}nd{% elif result.subject_position == 3 %}rd{% else %}th{% endif %}</sup></td>
+                        <td>{{ result.appreciation }}</td>
                     </tr>
                     {% endfor %}
                     <tr>
@@ -149,9 +163,53 @@
                         <td style="text-align: right !important; font-weight: 900;" colspan="3">AVERAGE: </td>
                         <td style="font-weight: 900;" colspan="4">{{ student_data.average }}</td>
                         <td>POSITION:</td>
-                        <td style="font-weight: 900;">{{ student_data.position }}<sup>th</sup></td>
+                        <td style="font-weight: 900;">{{ student_data.position }}<sup>{% if student_data.position == 1 %}st{% elif student_data.position == 2 %}nd{% elif student_data.position == 3 %}rd{% else %}th{% endif %}</sup></td>
                     </tr>
                 </table>
+            </section>
+
+            <section class="mt-0">
+                <h1 class="section_title">Student Analysis and Report</h1>
+                <div class="flex_remarks">
+                    <table>
+                        <tr>
+                            <th colspan="2">DISCIPLINE / TRAVAIL</th>
+                            <th>ACADEMIC WORK</th>
+                            <th class="principal_column">
+                                <h3 class="section_title small">
+                                    Principals Remark
+                                </h3>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th colspan="2">Lateness / Retard</th>
+                            <th>Honour role </th>
+                            <td rowspan="4">
+                                <div class="sign_section">
+                                sign here
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>ABSENCES</th>
+                            <th></th>
+                            <th>CREDITS / ENCOURAGEMENT </th>
+                        </tr>
+                        <tr>
+                            <th>Punishments / Consigne</th>
+                            <th></th>
+                            <th>Distinction </th>
+                        </tr>
+                        <tr>
+                            <th>Suspension in Days</th>
+                            <th></th>
+                            <th>Serious Warnings </th>
+                        </tr>
+                        <tr>
+                            
+                        </tr>
+                    </table>
+                </div>
             </section>
         </div>
     </div>
