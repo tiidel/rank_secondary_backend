@@ -16,6 +16,7 @@ urlpatterns = [
     path('me/profile/<int:user_id>/', views.UpdateUserInformation.as_view(), name='update_user'),
     # path('confirm-user/', views.UserView.as_view(), name='User Confirm'),  
     path('verify-email/', views.VerifyEmail.as_view(), name='verify-email'),
+    path('users/', views.ListUsers.as_view(), name='list_users'),
    
     # RESET PASSWORD
     path('reset-password', views.ChangePassword.as_view(), name='password_reset_confirm'),
