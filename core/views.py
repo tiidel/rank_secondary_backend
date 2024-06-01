@@ -53,10 +53,11 @@ class Utils:
 
 
 class ListUsers(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
-        # Filter users that are active and their last login is less than 30 days
-        users = User.objects.filter(is_active=True).order_by('last_login')
+        user_id = request.user.id
+        # Filter all active users except for current user
+        users = User.objects.filter(is_active=True).exclude(id=user_id).order_by('last_login')
         serializer = RegisterSerializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK) 
     
