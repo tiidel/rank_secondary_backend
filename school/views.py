@@ -813,6 +813,56 @@ class ClassView(APIView):
         return Response([serializer.data for serializer in serializers], status=status.HTTP_201_CREATED)
 
 
+class UpdateClassView(APIView):
+    serializer_class = ClassSerializer
+    permission_classes = [IsAuthenticated]
+
+    def find_class_by_id(self, id):
+        return Class.objects.filter(id=id).first()
+    
+    def get(self, request, class_id):
+        cls = self.find_class_by_id(class_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        serializers = ClassSerializer(cls)
+        return Response(serializers.data, status=status.HTTP_200_OK)
+    
+    def put(self, request, class_id):
+        cls = self.find_class_by_id(class_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializers = self.serializer_class(cls, data=request.data, partial=True)
+
+        if serializers.is_valid():
+            serializers.save()
+            return Response(serializers.data, status=status.HTTP_202_ACCEPTED)
+        return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, class_id):
+        cls = self.find_class_by_id(class_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializers = self.serializer_class(cls, data=request.data, partial=True)
+
+        if serializers.is_valid():
+            serializers.save()
+            return Response(serializers.data, status=status.HTTP_202_ACCEPTED)
+        return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, class_id):
+        cls = self.find_class_by_id(class_id)
+        if not cls:
+            return Response({"message": "No class with provided ID"}, status=status.HTTP_404_NOT_FOUND)
+        if cls.is_delete:
+            return Response({"message": "Class with id {class_id} already been deleted"}, status=status.HTTP_400_BAD_REQUEST)
+        cls.is_delete = True
+        cls.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+
 class ClassInstructor(APIView):
     serializer_class = ClassSerializer
     permission_classes = [IsAuthenticated]

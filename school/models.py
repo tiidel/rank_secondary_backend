@@ -412,7 +412,7 @@ class Class(models.Model):
 
     class_name = models.CharField(_("e.g form one or lower sixth"), max_length=100)
     
-    formal_name = models.CharField(_("e.g form one or lower sixth"), max_length=100)
+    formal_name = models.CharField(_("e.g form one or lower sixth"), max_length=100, null=True, blank=True)
     
     enrolment = models.IntegerField(default=0)
     
@@ -426,16 +426,18 @@ class Class(models.Model):
 
     subjects = models.ManyToManyField('Subject', related_name='classes', null=True)
     
-    # siblings = models.ManyToManyField('Class', related_name='class_siblings', null=True)
+    siblings = models.ManyToManyField('self', related_name='class_siblings', null=True)
 
-    # full_name = models.CharField(_("e.g form one or lower sixth"), max_length=100, null=True, blank=True)
+    full_name = models.CharField(_("e.g form one or lower sixth"), max_length=100, null=True, blank=True)
 
-    # def __str__(self):
-    #     return f'{self.level.name} {self.class_name}'
+    promotion_class = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f'{self.level.name} {self.class_name}'
     
-    # def save(self, *args, **kwargs):
-    #     self.full_name = f"{self.level.name} {self.class_name}"
-    #     super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        self.full_name = f"{self.level.name} {self.class_name}"
+        super().save(*args, **kwargs)
 
 
 
