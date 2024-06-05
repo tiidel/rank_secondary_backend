@@ -10,6 +10,16 @@ GROUP_SECRETARY = 'Secretary'
 GROUP_STUDENT = 'Student'
 GROUP_GUARDIAN = 'Guardian'
 GROUP_GENERAL = 'Staff'
+GROUP_GENERAL = 'Librarian'
+GROUP_GENERAL = 'Nurse'
+GROUP_GENERAL = 'Counselor'
+GROUP_GENERAL = 'Security'
+GROUP_GENERAL = 'Cleaner'
+GROUP_GENERAL = 'Driver'
+GROUP_GENERAL = 'Cook'
+GROUP_GENERAL = 'Gardener'
+GROUP_GENERAL = 'Other Staff'
+
 
 def create_groups():
     teacher_group, _ = Group.objects.get_or_create(name=GROUP_TEACHER)
