@@ -558,6 +558,8 @@ class Subject(models.Model):
         
         self.cls.subjects.add(self)
 
+
+
 class MatriculeCounter(models.Model):
     tenant = models.CharField(max_length=255)
     level = models.CharField(max_length=255)
