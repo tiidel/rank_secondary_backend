@@ -70,7 +70,7 @@ class LevelChoices(models.TextChoices):
     
     Middleschool: Any = 'Middle School', 'Middle School'
 
-    Form: Any = 'Form', 'Form'
+    Form: Any = 'form', 'Form'
     
     JuniorHigh: Any = 'Junior High', 'Junior High'
     
