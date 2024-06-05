@@ -490,6 +490,10 @@ class Staff(BaseModel):
     
     bio = models.CharField(max_length=3000, null=False, blank=True)
     
+    bank_account = models.CharField(max_length=3000, null=False, blank=True)
+    
+    swift_code = models.CharField(max_length=3000, null=False, blank=True)
+    
     salary = models.IntegerField(_("salary"), default=0)
     
     is_active = models.BooleanField(_("If staff member is currently active in their role"), default=True)
@@ -607,6 +611,8 @@ class Student(models.Model):
     medical_condition = models.CharField(_("Medical condition of student"), max_length=256, null=True, blank=True)
 
     emergency_contact = models.CharField(_("Emergency contact of student"), max_length=256, null=True, blank=True)
+
+    qualification = models.CharField(_("Maximum qualification of student"), max_length=256, null=True, blank=True)
     
 
 

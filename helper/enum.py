@@ -33,6 +33,26 @@ class UserRole(models.TextChoices):
 
     Guardian: Any = 'guardian', 'Guardian'
 
+    Admin: Any = 'admin', 'Admin'
+
+    Cleaner: Any = 'cleaner', 'Cleaner'
+
+    Librarian: Any = 'librarian', 'Librarian'
+
+    Driver: Any = 'driver', 'Driver'
+
+    Cook: Any = 'cook', 'Cook'
+
+    Gardener: Any = 'gardener', 'Gardener'
+
+    Security: Any = 'security', 'Security'
+
+    Nurse: Any = 'nurse', 'Nurse'
+
+    Counselor: Any = 'counselor', 'Counselor'
+
+    Other: Any = 'other', 'Other'
+
 
 class GuardianType(models.TextChoices):
     """--- Type of guadian student has ---"""

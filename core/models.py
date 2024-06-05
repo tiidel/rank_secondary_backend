@@ -146,6 +146,8 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
 
     role = models.CharField(_("User role"), max_length=50, null=True, blank=True, choices=UserRole.choices)
     
+    bio = models.CharField(_("Some content about user"), max_length=50, null=True, blank=True)
+    
     address_alt = models.CharField(_('location of residence of user'), max_length=256, null=True, blank=True)
 
     school_code = models.CharField(_("Code from school where user belongs"), max_length=15, null=False, blank=True)
