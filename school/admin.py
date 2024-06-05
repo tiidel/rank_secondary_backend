@@ -14,7 +14,20 @@ models = [
     Staff,
     Class,
     StudentClassRelation,
-    Terms
+    Terms,
+    Sequence,
+    Department,
+    School,
+    ClassFees,
+    Subject,
+    Grade,
+    Registration,
+    Subscription,
+    ServiceCharge,
+    Payment,
+    Timetable,
+    Attendance
+
 ]
 
 admin.site.register( models )
