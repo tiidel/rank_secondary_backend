@@ -494,84 +494,83 @@ class TermAPIView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
     
     def create_school_program(self, start_date, end_date, terms):
-        try:
-            program = Program.objects.create(academic_start=start_date, academic_end=end_date)
-            program.terms.set(terms)
-            program.save()
-            serializer = ProgramSerializer(program)
-            return serializer.data
-        except Exception as e:
-            return None
+        program = Program.objects.create(academic_start=start_date, academic_end=end_date)
+        program.terms.set(terms)
+        program.save()
+        serializer = ProgramSerializer(program)
+        return serializer.data
 
     def post(self, request):
         if not isinstance(request.data, list):
             return Response({"message": "Request data should be a list of terms"}, status=status.HTTP_400_BAD_REQUEST)
 
-        created_terms = []
-        errors = []
-        min_start_date = None
-        max_end_date = None
-        terms_list = []
-
-        for term_data in request.data:
-            start_date = term_data.get('start_date')
-            end_date = term_data.get('end_date')
-
-            if not start_date or not end_date:
-                errors.append({"message": "Start date and end date are required"})
-                continue
+        with transaction.atomic():
+            created_terms = []
+            min_start_date = None
+            max_end_date = None
+            terms_list = []
 
             try:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-            except ValueError:
-                errors.append({"message": "Invalid date format. Use YYYY-MM-DD"})
-                continue
+                for term_data in request.data:
+                    start_date = term_data.get('start_date')
+                    end_date = term_data.get('end_date')
 
-            overlapping_terms = Terms.objects.filter(
-                Q(start_date__range=[start_date, end_date]) |
-                Q(end_date__range=[start_date, end_date]) |
-                Q(start_date__lte=start_date, end_date__gte=end_date)
-            )
+                    if not start_date or not end_date:
+                        raise ValueError("Start date and end date are required")
 
-            if overlapping_terms.exists():
-                errors.append({"message": "Term overlaps with existing term"})
-                continue
+                    try:
+                        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    except ValueError:
+                        raise ValueError("Invalid date format. Use YYYY-MM-DD")
 
-            school_id = term_data.pop('school', None)
-            if not school_id:
-                errors.append({"message": "School ID is required"})
-                continue
+                    overlapping_terms = Terms.objects.filter(
+                        Q(start_date__range=[start_date, end_date]) |
+                        Q(end_date__range=[start_date, end_date]) |
+                        Q(start_date__lte=start_date, end_date__gte=end_date)
+                    )
 
-            try:
-                school = School.objects.get(id=school_id)
-            except School.DoesNotExist:
-                errors.append({"message": f"School with ID '{school_id}' does not exist"})
-                continue
+                    if overlapping_terms.exists():
+                        raise ValueError("Term overlaps with existing term")
 
-            if min_start_date is None or start_date < min_start_date:
-                min_start_date = start_date
-            if max_end_date is None or end_date > max_end_date:
-                max_end_date = end_date
+                    school_id = term_data.pop('school', None)
+                    if not school_id:
+                        raise ValueError("School ID is required")
 
-            term_data['school'] = school.id
-            serializer = self.serializer_class(data=term_data)
-            if serializer.is_valid():
-                term = serializer.save()
-                created_terms.append(serializer.data)
-                terms_list.append(term)
-            else:
-                errors.append(serializer.errors)
+                    try:
+                        school = School.objects.get(id=school_id)
+                    except School.DoesNotExist:
+                        raise ValueError(f"School with ID '{school_id}' does not exist")
 
-        if min_start_date and max_end_date:
-            year = self.create_school_program(min_start_date, max_end_date, terms_list)
-        else:
-            year = None
+                    if min_start_date is None or start_date < min_start_date:
+                        min_start_date = start_date
+                    if max_end_date is None or end_date > max_end_date:
+                        max_end_date = end_date
 
-        if errors:
-            return Response({"errors": errors, "created_terms": created_terms}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({"year": year, "terms": created_terms}, status=status.HTTP_201_CREATED)
+                    term_data['school'] = school.id
+                    serializer = self.serializer_class(data=term_data)
+                    if serializer.is_valid():
+                        term = serializer.save()
+                        created_terms.append(serializer.data)
+                        terms_list.append(term)
+                    else:
+                        raise ValueError(serializer.errors)
+
+                if min_start_date and max_end_date:
+                    year = self.create_school_program(min_start_date, max_end_date, terms_list)
+                else:
+                    year = None
+
+            except ValueError as e:
+                # Rollback the transaction and return the error message
+                transaction.set_rollback(True)
+                return Response({"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                # Rollback the transaction and return a generic error message
+                transaction.set_rollback(True)
+                return Response({"message": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"year": year, "terms": created_terms}, status=status.HTTP_201_CREATED)
 
     def put(self, request, pk):
         term = Terms.objects.get(pk=pk)
@@ -585,7 +584,9 @@ class TermAPIView(APIView):
         term = Terms.objects.get(pk=pk)
         term.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
+
+
     
 class ActiveTermView(APIView):
     def get(self, request):
