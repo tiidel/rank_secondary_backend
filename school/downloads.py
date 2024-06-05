@@ -4,7 +4,7 @@ import zipfile
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from rest_framework.decorators import api_view
-from .models import Grade, Student, Guardian, Staff, Subject, Class, User, Terms, School
+from .models import Grade, Student, Guardian, Staff, Subject, Class, User, Terms, School, Program
 from rest_framework.views import APIView, status, Response
 from wkhtmltopdf.views import PDFTemplateResponse
 from collections import defaultdict
@@ -183,6 +183,8 @@ def download_all_students_results_for_term(request, cls_id, term_id):
     school = School.objects.first()
     classroom = get_object_or_404(Class, id=cls_id)
     term = get_object_or_404(Terms, id=term_id)
+    program = Program.objects.filter(terms=term.id).first()
+    print('------------PROGRAM:', program)
     students_grades = Grade.objects.filter(classroom=cls_id, term=term_id)
 
     all_student_data = []
@@ -279,7 +281,9 @@ def download_all_students_results_for_term(request, cls_id, term_id):
     student_list = [{"name": student.user.get_full_name(), "id": student.id, "matricule": student.matricule } for student in students]
 
     ctx = {
-        'term_id': term.id,
+        'term': term,
+        'school': school,
+        'program': program,
         'all_student_data': all_student_data,
         'class_council_report': class_council_report,
         'student_list': student_list
