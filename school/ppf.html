@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kimbi Darlington - Software Engineer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(to right, #0066ff, #00ccff);
+            color: #fff;
+            padding: 20px 0;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            font-size: 1.2em;
+            margin: 10px 0 0;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            overflow: hidden;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            border-bottom: 2px solid #0066ff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            animation: slide-in 1s ease-out;
+        }
+        .section p {
+            line-height: 1.6;
+        }
+        .hobbies ul {
+            list-style: none;
+            padding: 0;
+        }
+        .hobbies ul li {
+            background: #0066ff;
+            color: #fff;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+        .hobbies ul li:hover {
+            background: #004c99;
+        }
+        .portfolio .project {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            transition: transform 0.3s ease;
+        }
+        .portfolio .project img {
+            max-width: 200px;
+            border-radius: 10px;
+            margin-right: 20px;
+        }
+        .portfolio .project:hover {
+            transform: scale(1.05);
+        }
+        .contact form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .contact form input, .contact form textarea {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .contact form input[type="submit"] {
+            background-color: #0066ff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 15px 30px;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        .contact form input[type="submit"]:hover {
+            background-color: #004c99;
+            transform: scale(1.05);
+        }
+        @keyframes slide-in {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+    <script>
+        (function() {
+            emailjs.init('YOUR_USER_ID'); // Replace 'YOUR_USER_ID' with your actual EmailJS user ID
+        })();
+
+        function sendEmail(event) {
+            event.preventDefault();
+
+            emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', event.target)
+                .then(function(response) {
+                    console.log('SUCCESS!', response.status, response.text);
+                    alert('Your message has been sent successfully!');
+                }, function(error) {
+                    console.log('FAILED...', error);
+                    alert('There was an error sending your message. Please try again.');
+                });
+        }
+    </script>
+</head>
+<body>
+    <div class="header">
+        <h1>Kimbi Darlington</h1>
+        <p>Software Engineer from Cameroon</p>
+    </div>
+    <div class="container">
+        <div class="section bio">
+            <h2>About Me</h2>
+            <p>Hello! I'm Kimbi Darlington, a passionate software engineer based in Cameroon. I have a strong background in developing innovative software solutions and a keen interest in exploring new technologies. My journey in the tech world has been driven by a relentless curiosity and a desire to make a positive impact through my work.</p>
+        </div>
+        <div class="section hobbies">
+            <h2>Hobbies</h2>
+            <ul>
+                <li>Teaching: I love sharing my knowledge and have recently started a YouTube channel where I teach various programming and technology concepts.</li>
+                <li>Learning New Technology: I'm always eager to learn about the latest advancements in technology and how they can be applied to solve real-world problems.</li>
+                <li>Watching Anime: In my free time, I enjoy immersing myself in the world of anime, exploring different genres and stories.</li>
+                <li>Playing Games: Gaming is another passion of mine. It helps me relax and also provides inspiration for creative problem-solving.</li>
+            </ul>
+        </div>
+        <div class="section portfolio">
+            <h2>Portfolio</h2>
+            <div class="project">
+                <img src="screenshot_rankafrica.png" alt="RankAfrica Project">
+                <div>
+                    <h3>RankAfrica</h3>
+                    <p>RankAfrica is a comprehensive platform built with React and Django that ranks businesses across Africa. The site provides users with insights into various industries, helping them make informed decisions. The project showcases advanced data handling and a sleek, user-friendly interface.</p>
+                </div>
+            </div>
+            <div class="project">
+                <img src="screenshot_ehooyia.png" alt="E-Hooyia Project">
+                <div>
+                    <h3>E-Hooyia</h3>
+                    <p>E-Hooyia is an innovative e-commerce platform developed using React and Django. It offers a seamless shopping experience with features such as product recommendations, user reviews, and secure payment options. The site is designed to be highly scalable and responsive.</p>
+                </div>
+            </div>
+        </div>
+        <div class="section contact">
+            <h2>Contact Me</h2>
+            <form onsubmit="sendEmail(event)">
+                <input type="text" name="name" placeholder="Your Name" required>
+                <input type="email" name="email" placeholder="Your Email" required>
+                <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
+                <input type="submit" value="Send Message">
+            </form>
+        </div>
+    </div>
+</body>
+</html>

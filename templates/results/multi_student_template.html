@@ -4,87 +4,180 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1200px, initial-scale=1.0">
     <title>Report Cards</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .page {
+            height: 100vh;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        .container {
+            height: 100%;
+            position: relative;
+        }
+        nav {
+            background-color: #DBEBF8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            color: #115F8A;
+        }
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            text-align: center !important;
+            border: 2px solid #000;
+            padding: 10px;
+            font-size: 14px;
+        }
+        .principal_column {
+            padding: 0px;
+            font-size: 1.2rem;
+        }
+        th:nth-child(1), td:nth-child(1) {
+            text-align: left !important;
+        }
+        .flex_title {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .flex_title * {
+            text-align: center;
+        }
+        .name_section * {
+            font-size: 14px !important;
+        }
+        .header_section {
+            background-color: blue;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            width: 60%;
+        }
+        .header_section div {
+            width: 40%;
+            display: flex;
+            flex-direction: row;
+            background-color: orange;
+        }
+        .section_title {
+            color: #fff;
+            background-color: #000;
+            text-align: center;
+            padding: 1rem;
+            margin-bottom: 0px;
+        }
+        .main-content {
+            flex: 1;
+        }
+        .section_title.small {
+            font-size: 1.2em;
+        }
+        .stick-bottom {
+            /* margin-top: auto; */
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+        }
+    </style>
 </head>
-<style>
-    @page {
-        size: A4;
-        margin: 1cm;
-    }
-    .page-break {
-        page-break-before: always;
-    }
-    nav {
-        background-color: #DBEBF8;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 2rem;
-        color: #115F8A;
-    }
-    table {
-        font-family: arial, sans-serif;
-        border-collapse: collapse;
-        width: 100%;
-    }
-    th, td {
-        text-align: center !important;
-        border: 2px solid #000;
-        padding: 10px;
-        font-size: 14px;
-    }
-    .principal_column {
-        padding: 0px;
-        font-size: 1.2rem;
-    }
-    th:nth-child(1), td:nth-child(1) {
-        text-align: left !important;
-    }
-    .flex_title {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-    }
-    .flex_title * {
-        text-align: center;
-    }
-    .name_section * {
-        font-size: 14px !important;
-    }
-    .header_section {
-        background-color: blue;
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        width: 60%;
-    }
-    .header_section div {
-        width: 40%;
-        display: flex;
-        flex-direction: row;
-        background-color: orange;
-    }
-    .section_title {
-        color: #fff;
-        background-color: #000;
-        text-align: center;
-        padding: 1rem;
-        margin-bottom: 0px;
-    }
-    
-    .section_title.small {
-        font-size: 1.2em;
-    }
-    
-</style>
 <body>
-    <h1>Class Report for Term {{ term_id }}</h1>
-    <h2>Best Average: {{ class_max_average }}</h2>
-    <h2>Worst Average: {{ class_min_average }}</h2>
-    <h2>Mean Average: {{ class_mean_average }}</h2>
-    <h2>Best Student: {{ min_average }}</h2>
-    <h2>Best Student: {{ min_average }}</h2>
-    
+    <h1>Class Report for Term {{ term.term_name }}</h1>
+
+    <!-- Class Council Report -->
+    <div class="page page-break">
+        <h2>Class Council Report</h2>
+        <table>
+            <tr>
+                <th>Best Average</th>
+                <td>{{ class_council_report.best_average|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <th>Worst Average</th>
+                <td>{{ class_council_report.worst_average|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <th>Mean Average</th>
+                <td>{{ class_council_report.mean_average|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <th>Best Subject</th>
+                <td>{{ class_council_report.best_subject }} ({{ class_council_report.best_subject_avg|floatformat:2 }})</td>
+            </tr>
+            <tr>
+                <th>Worst Subject</th>
+                <td>{{ class_council_report.worst_subject }} ({{ class_council_report.worst_subject_avg|floatformat:2 }})</td>
+            </tr>
+        </table>
+
+        <!-- Subject List with Mean Averages -->
+        <h2>Subject List & Mean Averages</h2>
+        <table>
+            <tr>
+                <th>Subject</th>
+                <th>Mean Average</th>
+            </tr>
+            {% for subject, avg in class_council_report.subject_averages.items %}
+            <tr>
+                <td>{{ subject }}</td>
+                <td>{{ avg|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- List of Students -->
+    <div class="page page-break">
+        <h2>Student List and Performance</h2>
+        <div>
+            <p>EX = Excellent</p>
+            <p>GD = Good</p>
+            <p>AV = Average</p>
+            <p>PR = Poor</p>
+            <p>BD = Bad</p>
+        </div>
+        <table>
+            <tr>
+                <th>Student Name</th>
+                <th>Matricule</th>
+                <th>EX</th>
+                <th>GD</th>
+                <th>AV</th>
+                <th>PR</th>
+                <th>BD</th>
+            </tr>
+            {% for student in student_list %}
+            <tr>
+                <td style="width: 50%;">{{ student.name }}</td>
+                <td style="text-transform: uppercase;">{{ student.matricule }}</td>
+                <td style="width: 50px;"></td>
+                <td style="width: 50px;"></td>
+                <td style="width: 50px;"></td>
+                <td style="width: 50px;"></td>
+                <td style="width: 50px;"></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- Individual Student Report Cards -->
     {% for student_data in all_student_data %}
     <div class="page page-break">
         <div class="container">
@@ -95,80 +188,81 @@
                     <p class="font-weight-bold mb-0">Term {{ term }}</p>
                 </div>
             </nav>
+            <div class="main-content">
+                <section class="mt-4 name_section">
+                    <p class="mb-0 h3 font-weight-bold">FULL NAME: {{ student_data.student }}</p>
+                    <div style="display: flex; position: relative; justify-content: space-between; margin-bottom: 10px;">
+                        <div style="width: 40%;">
+                            <div>
+                                <span>DATE OF BIRTH: </span>
+                                <span style="margin-left: 1rem;">{{ student_data.student.user.date_of_birth }}</span>
+                            </div>
+                        </div>
+                        <div style="position: absolute; left: 40%; top: 0%; width: 40%; height: 100%; margin-bottom: 1rem;">
+                            <div style="font-weight: bold;">
+                                <span>Matricule: </span>
+                                <span style="margin-left: 1rem; text-transform: uppercase;">{{ student_data.student.matricule }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; position: relative; justify-content: space-between; margin-bottom: 2rem;">
+                        <div style="width: 40%;">
+                            <div>
+                                <span>SEX: </span>
+                                <span style="margin-left: 1rem;">{{ student_data.student.user.gender }}</span>
+                            </div>
+                        </div>
+                        <div style="position: absolute; left: 40%; top: 0%; width: 40%; height: 100%;">
+                            <div>
+                                <span>Class: </span>
+                                <span style="margin-left: 1rem; text-transform: capitalize;">{{ student_data.student.student_class.level.name }} - {{ student_data.student.student_class.class_name }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-            <section class="mt-4 name_section">
-                <p class="mb-0 h3 font-weight-bold">FULL NAME: {{ student_data.student }}</p>
-                <div style="display: flex; position: relative; justify-content: space-between;">
-                    <div style="width: 40%;">
-                        <div>
-                            <span>DATE OF BIRTH: </span>
-                            <span style="margin-left: 1rem;">{{ student_data.student.user.date_of_birth }}</span>
-                        </div>
-                    </div>
-                    <div style="position: absolute; left: 40%; top: 0%; width: 40%; height: 100%; margin-bottom: 1rem;">
-                        <div>
-                            <span>Matricule: </span>
-                            <span style="margin-left: 1rem;">{{ student_data.student.matricule }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; position: relative; justify-content: space-between; margin-bottom: 2rem;">
-                    <div style="width: 40%;">
-                        <div>
-                            <span>SEX: </span>
-                            <span style="margin-left: 1rem;">{{ student_data.student.user.gender }}</span>
-                        </div>
-                    </div>
-                    <div style="position: absolute; left: 40%; top: 0%; width: 40%; height: 100%;">
-                        <div>
-                            <span>Class: </span>
-                            <span style="margin-left: 1rem; text-transform: capitalize;">{{ student_data.student.student_class.level.name }} - {{ student_data.student.student_class.class_name }}</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="mt-3">
-                <table>
-                    <tr>
-                        <th colspan="2">Subject</th>
-                        {% for sequence in student_data.grade_sequences %}
-                        <th>{{ sequence.name }}</th>
+                <section class="mt-3">
+                    <table>
+                        <tr>
+                            <th colspan="2">Subject</th>
+                            {% for sequence in student_data.grade_sequences %}
+                            <th>{{ sequence.name }}</th>
+                            {% endfor %}
+                            <th>Average</th>
+                            <th>Coeff</th>
+                            <th>Total</th>
+                            <th>Rank</th>
+                            <th>Appreciation</th>
+                        </tr>
+                        {% for result in student_data.results %}
+                        <tr>
+                            <td colspan="2">{{ result.subject_name }}</td>
+                            {% for grade in result.grades %}
+                            <td>{{ grade.grade }}</td>
+                            {% endfor %}
+                            <td>{{ result.avg_grade|floatformat:2 }}</td>
+                            <td>{{ result.sub_coef }}</td>
+                            <td>{{ result.total|floatformat:2 }}</td>
+                            <td>{{ result.subject_position }}<sup>{% if result.subject_position == 1 %}st{% elif result.subject_position == 2 %}nd{% elif result.subject_position == 3 %}rd{% else %}th{% endif %}</sup></td>
+                            <td>{{ result.appreciation }}</td>
+                        </tr>
                         {% endfor %}
-                        <th>Average</th>
-                        <th>Coeff</th>
-                        <th>Total</th>
-                        <th>Rank</th>
-                        <th>Appreciation</th>
-                    </tr>
-                    {% for result in student_data.results %}
-                    <tr>
-                        <td colspan="2">{{ result.subject_name }}</td>
-                        {% for grade in result.grades %}
-                        <td>{{ grade.grade }}</td>
-                        {% endfor %}
-                        <td>{{ result.avg_grade|floatformat:2 }}</td>
-                        <td>{{ result.sub_coef }}</td>
-                        <td>{{ result.total|floatformat:2 }}</td>
-                        <td>{{ result.subject_position }}<sup>{% if result.subject_position == 1 %}st{% elif result.subject_position == 2 %}nd{% elif result.subject_position == 3 %}rd{% else %}th{% endif %}</sup></td>
-                        <td>{{ result.appreciation }}</td>
-                    </tr>
-                    {% endfor %}
-                    <tr>
-                        <td style="text-align: right !important; font-weight: 900;" colspan="6">TOTAL: </td>
-                        <td>{{ student_data.total_weight|floatformat:2 }}</td>
-                        <td></td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right !important; font-weight: 900;" colspan="3">AVERAGE: </td>
-                        <td style="font-weight: 900;" colspan="4">{{ student_data.average }}</td>
-                        <td>POSITION:</td>
-                        <td style="font-weight: 900;">{{ student_data.position }}<sup>{% if student_data.position == 1 %}st{% elif student_data.position == 2 %}nd{% elif student_data.position == 3 %}rd{% else %}th{% endif %}</sup></td>
-                    </tr>
-                </table>
-            </section>
+                        <tr>
+                            <td style="text-align: right !important; font-weight: 900;" colspan="6">TOTAL: </td>
+                            <td>{{ student_data.total_weight|floatformat:2 }}</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: right !important; font-weight: 900;" colspan="3">AVERAGE: </td>
+                            <td style="font-weight: 900;" colspan="4">{{ student_data.average }}</td>
+                            <td>POSITION:</td>
+                            <td style="font-weight: 900;">{{ student_data.position }}<sup>{% if student_data.position == 1 %}st{% elif student_data.position == 2 %}nd{% elif student_data.position == 3 %}rd{% else %}th{% endif %}</sup></td>
+                        </tr>
+                    </table>
+                </section>
+            </div>
 
-            <section class="mt-0">
+            <section class="mt-0 stick-bottom">
                 <h1 class="section_title">Student Analysis and Report</h1>
                 <div class="flex_remarks">
                     <table>

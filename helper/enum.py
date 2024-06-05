@@ -68,11 +68,13 @@ class LevelChoices(models.TextChoices):
 
     Primary: Any = 'primary', 'Primary'
     
-    Middleschool: Any = 'middleschool', 'Middleschool'
+    Middleschool: Any = 'Middle School', 'Middle School'
+
+    Form: Any = 'Form', 'Form'
     
-    JuniorHigh: Any = 'juniorhigh', 'JuniorHigh'
+    JuniorHigh: Any = 'Junior High', 'Junior High'
     
-    Highschool: Any = 'highschool', 'Highschool'
+    Highschool: Any = 'High School', 'High School'
     
 
 class FeeInstallments(models.TextChoices):

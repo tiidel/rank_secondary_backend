@@ -177,29 +177,34 @@ def download_student_result_for_term(request,cls_id, term_id, stud_id):
 
 
 
+
 @api_view(['GET'])
 def download_all_students_results_for_term(request, cls_id, term_id):
     school = School.objects.first()
+    classroom = get_object_or_404(Class, id=cls_id)
+    term = get_object_or_404(Terms, id=term_id)
     students_grades = Grade.objects.filter(classroom=cls_id, term=term_id)
 
     all_student_data = []
-
-    # Dictionary to hold subject-wise grades for all students
     subject_grades = defaultdict(list)
+    students = []
+    class_max_average = float('-inf')
+    class_min_average = float('inf')
+    total_average = 0
 
     for student_grade in students_grades:
+        students.append(student_grade.student)
         grade_list = student_grade.grade_list.all()
-
         grades_by_sequence = {}
-
         subject_data = defaultdict(list)
+        
         for entry in grade_list:
             subject = entry.subject.name
             subject_data[subject].append(entry)
             sequence = entry.sequence
             if sequence not in grades_by_sequence:
                 grades_by_sequence[sequence] = []
-
+        
         student_results = []
         for subject, grades in subject_data.items():
             if len(grades) == 2:
@@ -228,7 +233,6 @@ def download_all_students_results_for_term(request, cls_id, term_id):
                 "appreciation": appreciation
             })
 
-            # Append the average grade to the subject_grades dictionary
             subject_grades[grades[0].subject.name].append((student_grade.student.id, avg_grade))
 
         all_student_data.append({
@@ -236,8 +240,17 @@ def download_all_students_results_for_term(request, cls_id, term_id):
             "student": student_grade.student,
             "results": student_results,
             "position": student_grade.position,
-            "average": round(student_grade.average, 2)
+            "average": round(student_grade.average, 2),
+            "total_weight": sum(result["total"] for result in student_results)
         })
+
+        if student_grade.average > class_max_average:
+            class_max_average = student_grade.average
+        if student_grade.average < class_min_average:
+            class_min_average = student_grade.average
+        total_average += student_grade.average
+
+    class_mean_average = total_average / len(students_grades)
 
     # Calculate the position of each student in each subject
     for subject, grades in subject_grades.items():
@@ -249,8 +262,27 @@ def download_all_students_results_for_term(request, cls_id, term_id):
                         if result["subject_name"] == subject:
                             result["subject_position"] = i + 1
 
+    # Calculate mean subject averages
+    subject_averages = {subject: sum(grade for _, grade in grades) / len(grades) for subject, grades in subject_grades.items()}
+
+    class_council_report = {
+        "best_average": class_max_average,
+        "worst_average": class_min_average,
+        "mean_average": class_mean_average,
+        "best_subject": max(subject_averages, key=subject_averages.get),
+        "best_subject_avg": max(subject_averages.values()),
+        "worst_subject": min(subject_averages, key=subject_averages.get),
+        "worst_subject_avg": min(subject_averages.values()),
+        "subject_averages": subject_averages
+    }
+
+    student_list = [{"name": student.user.get_full_name(), "id": student.id, "matricule": student.matricule } for student in students]
+
     ctx = {
-        'all_student_data': all_student_data
+        'term_id': term.id,
+        'all_student_data': all_student_data,
+        'class_council_report': class_council_report,
+        'student_list': student_list
     }
 
     return PDFTemplateResponse(

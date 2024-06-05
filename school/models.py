@@ -425,6 +425,18 @@ class Class(models.Model):
     students = models.ManyToManyField('school.Student', through='StudentClassRelation')
 
     subjects = models.ManyToManyField('Subject', related_name='classes', null=True)
+    
+    # siblings = models.ManyToManyField('Class', related_name='class_siblings', null=True)
+
+    # full_name = models.CharField(_("e.g form one or lower sixth"), max_length=100, null=True, blank=True)
+
+    # def __str__(self):
+    #     return f'{self.level.name} {self.class_name}'
+    
+    # def save(self, *args, **kwargs):
+    #     self.full_name = f"{self.level.name} {self.class_name}"
+    #     super().save(*args, **kwargs)
+
 
 
 class StudentClassRelation(models.Model):
