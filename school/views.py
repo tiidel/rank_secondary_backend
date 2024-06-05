@@ -1273,7 +1273,7 @@ class StaffView(APIView):
 
             except Exception as error:
                 print(f"Error occurred: {error}")
-                return Response({"message": "An error occurred while processing your request"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": "An error occurred while processing your request", "error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
  
 
 class StaffItemView(APIView):

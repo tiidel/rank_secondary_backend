@@ -10,15 +10,15 @@ GROUP_SECRETARY = 'Secretary'
 GROUP_STUDENT = 'Student'
 GROUP_GUARDIAN = 'Guardian'
 GROUP_GENERAL = 'Staff'
-GROUP_GENERAL = 'Librarian'
-GROUP_GENERAL = 'Nurse'
-GROUP_GENERAL = 'Counselor'
-GROUP_GENERAL = 'Security'
-GROUP_GENERAL = 'Cleaner'
-GROUP_GENERAL = 'Driver'
-GROUP_GENERAL = 'Cook'
-GROUP_GENERAL = 'Gardener'
-GROUP_GENERAL = 'Other Staff'
+GROUP_LIBRARIAN = 'Librarian'
+GROUP_NURSE = 'Nurse'
+GROUP_COUNSELOR = 'Counselor'
+GROUP_SECURITY = 'Security'
+GROUP_CLEANER = 'Cleaner'
+GROUP_DRIVER = 'Driver'
+GROUP_COOK = 'Cook'
+GROUP_GARDENER = 'Gardener'
+GROUP_OTHERS = 'Other Staff'
 
 
 def create_groups():
@@ -28,6 +28,15 @@ def create_groups():
     student_group, _ = Group.objects.get_or_create(name=GROUP_STUDENT)
     guardian_group, _ = Group.objects.get_or_create(name=GROUP_GUARDIAN)
     general_group, _ = Group.objects.get_or_create(name=GROUP_GENERAL)
+    librarian_group, _ = Group.objects.get_or_create(name=GROUP_LIBRARIAN)
+    nurse_group, _ = Group.objects.get_or_create(name=GROUP_NURSE)
+    counselor_group, _ = Group.objects.get_or_create(name=GROUP_COUNSELOR)
+    security_group, _ = Group.objects.get_or_create(name=GROUP_SECURITY)
+    cleaner_group, _ = Group.objects.get_or_create(name=GROUP_CLEANER)
+    driver_group, _ = Group.objects.get_or_create(name=GROUP_DRIVER)
+    cook_group, _ = Group.objects.get_or_create(name=GROUP_COOK)
+    gardener_group, _ = Group.objects.get_or_create(name=GROUP_GARDENER)
+    other_group, _ = Group.objects.get_or_create(name=GROUP_OTHERS)
 
     # Assign permissions to groups
     content_type = ContentType.objects.get_for_model(Program)
