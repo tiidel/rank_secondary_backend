@@ -81,6 +81,32 @@ class EducationType(models.TextChoices):
     Other: Any = 'Other', 'Other'
 
 
+
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class HumanReadableChoiceField(models.CharField):
+    def __init__(self, *args, **kwargs):
+
+        self.choices_form = kwargs.pop('choices_form', lambda choices: [(value, display_name) for value, display_name in choices])
+        
+        super().__init__(*args, **kwargs)
+
+    def from_db_value(self, value, expression, connection):
+       
+        if value is None:
+            return value
+       
+        return self.to_python(value)
+
+    def to_python(self, value):
+       
+        if value is None:
+            return value
+       
+        return dict(self.choices_form(self.choices)).get(value, value)
+
+
 class LevelChoices(models.TextChoices):
     """--- Levels in the school ---"""
     
@@ -88,13 +114,17 @@ class LevelChoices(models.TextChoices):
 
     Primary: Any = 'primary', 'Primary'
     
-    Middleschool: Any = 'Middle School', 'Middle School'
+    Middleschool: Any = 'middleschool', 'Middle School'
 
     Form: Any = 'form', 'Form'
+
+    Grade: Any = 'grade', 'Grade'
+
+    Level: Any = 'level', 'Level'
     
-    JuniorHigh: Any = 'Junior High', 'Junior High'
+    JuniorHigh: Any = 'juniorhigh', 'Junior High'
     
-    Highschool: Any = 'High School', 'High School'
+    Highschool: Any = 'highschool', 'High School'
     
 
 class FeeInstallments(models.TextChoices):

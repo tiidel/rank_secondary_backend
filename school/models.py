@@ -156,11 +156,11 @@ class Department(models.Model):
     def __str__(self):
         return self.name
     
-    
+
        
 class Level(BaseModel):
     
-    name = models.CharField(_("Levels in the school e.g Elementary, primary or secondary "), choices=LevelChoices.choices, max_length=50)  
+    name = HumanReadableChoiceField(_("Levels in the school e.g Elementary, primary or secondary "), choices=LevelChoices.choices, max_length=50)  
 
     departments =  models.ForeignKey(Department, on_delete=models.CASCADE) 
    
