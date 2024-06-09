@@ -35,7 +35,7 @@ def update_registration(request, transaction_history, school_id, tx_ref):
     transaction_id = request.data.get('transaction_id')
     payment = Payment.objects.filter(transaction_id=tx_ref).first()
 
-    if payment.amount != transaction_history.data.amount:
+    if payment.amount != transaction_history['data']['amount']:
         return Response({"message": "Fraud detected in transcation"}, status=status.HTTP_409_CONFLICT)
     
     registration = payment.registration
@@ -44,17 +44,17 @@ def update_registration(request, transaction_history, school_id, tx_ref):
     payment.is_complete = True
     payment.payment_status = "success"
     payment.payment_confirmation_date = timezone.now()
-    payment.reference_number = transaction_history.data.id
-    payment.notes = transaction_history.message
-    payment.currency = transaction_history.data.currency
+    payment.reference_number = transaction_history['data']['id']
+    payment.notes = transaction_history['message']
+    payment.currency = transaction_history['data']['currency']
     payment.installment_number = len(registration.payments) + 1
-    payment.payment_method = transaction_history.data.payment_type
-    payment.payment_gateway = transaction_history.data.meta.MOMO_NETWORK
+    payment.payment_method = transaction_history['data']['payment_type']
+    payment.payment_gateway = transaction_history['data']['meta']['MOMO_NETWORK']
     payment.save()
 
     # UPDATE REGISTRATION OBJECT
     registration.payments.aadd(payment)
-    registration.payed_ammount += transaction_history.data.amount
+    registration.payed_ammount += transaction_history['data']['amount']
     if registration.expected_ammount >= registration.payed_ammount:
         registration.is_complete = True
         registration.registration_status = "complete"
