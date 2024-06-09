@@ -9,6 +9,7 @@ from rest_framework.views import APIView, status, Response
 @api_view(['POST'])
 def verify_payment(request):
     transaction_id = request.data.get('transaction_id')
+    tx_ref = request.data.get('tx_ref')
     school_id = request.data.get('school_id')
     url = f'https://api.flutterwave.com/v3/transactions/{transaction_id}/verify'
 
@@ -23,16 +24,16 @@ def verify_payment(request):
     print(data)
 
     if data['status'] == 'success':
-        update_registration(request, data, school_id)
+        update_registration(request, data, school_id, tx_ref)
         return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
     else:
         return Response({'status': 'error', 'message': data['message']}, status=status.HTTP_400_BAD_REQUEST)
 
 
-def update_registration(request, transaction_history, school_id):
+def update_registration(request, transaction_history, school_id, tx_ref):
     feeInstallments = ["none", "first", "second", "complete"]
     transaction_id = request.data.get('transaction_id')
-    payment = Payment.objects.filter(transaction_id=transaction_id).first()
+    payment = Payment.objects.filter(transaction_id=tx_ref).first()
 
     if payment.amount != transaction_history.data.amount:
         return Response({"message": "Fraud detected in transcation"}, status=status.HTTP_409_CONFLICT)

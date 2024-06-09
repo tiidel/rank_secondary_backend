@@ -2553,7 +2553,16 @@ class PromoteStudentAPIView(APIView):
         subjects = new_class.subjects.all()
         grade = Grade.objects.create(student=student, classroom=new_class)
 
-        sequences = Sequence.objects.all()
+        active_program = Program.get_active_program()
+        if not active_program:
+            return Response({"message": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        terms = active_program.terms.all()
+
+        sequences = Sequence.objects.filter(term__in=terms).all().order_by('id')
+        if not sequences.exists():
+            return Response({"message": "No sequences found for the active program"}, status=status.HTTP_404_NOT_FOUND)
+        
         for sequence in sequences:
             for subject in subjects:
                 sts = StudentSubjects.objects.create(student=self, subject=subject, sequence=sequence)

@@ -575,7 +575,7 @@ class MatriculeCounter(models.Model):
         unique_together = ('tenant', 'level')
 
     def __str__(self):
-        return f"{self.tenant} - {self.level} - {self.last_number}"
+        return f"{self.tenant.upper()} - {self.level} - {self.last_number}"
 
 
 class Student(models.Model):
@@ -642,7 +642,7 @@ class Student(models.Model):
             matricule_counter.last_number += 1
             matricule_counter.save()
 
-        self.matricule = f"{tenant}{year:02d}{level_char}{matricule_counter.last_number:05d}"
+        self.matricule = f"{tenant.upper()}{year:02d}{level_char}{matricule_counter.last_number:05d}"
 
     def save(self, *args, **kwargs):
         request = kwargs.pop('request', None)
