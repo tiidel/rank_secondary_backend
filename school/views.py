@@ -221,6 +221,10 @@ class YearTermView(APIView):
     def get(self, request):
         # Get active program
         active_program = Program.get_active_program()
+
+        if not active_program:
+            return Response({'message': 'You have no active program'}, status=status.HTTP_412_PRECONDITION_FAILED)
+        
         # Get all program terms and return them
         terms = active_program.terms.all()
 
