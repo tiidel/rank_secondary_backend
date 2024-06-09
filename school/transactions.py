@@ -47,7 +47,7 @@ def update_registration(request, transaction_history, school_id, tx_ref):
     payment.reference_number = transaction_history['data']['id']
     payment.notes = transaction_history['message']
     payment.currency = transaction_history['data']['currency']
-    payment.installment_number = len(registration.payments) + 1
+    payment.installment_number = registration.payments.count()
     payment.payment_method = transaction_history['data']['payment_type']
     payment.payment_gateway = transaction_history['data']['meta']['MOMO_NETWORK']
     payment.save()
