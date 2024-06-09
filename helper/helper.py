@@ -1,3 +1,3 @@
 
-CLIENT_URL = 'rank-six.vercel.app'
-CLIENT_URL_WILDCARD = '*.rank-six.vercel.app'
+CLIENT_URL = 'rankafrica.net'
+CLIENT_URL_WILDCARD = '*.rankafrica.net'
