@@ -64,7 +64,11 @@ def update_registration(request, transaction_history, school_id, tx_ref):
         registration.registration_status = feeInstallments[feeInstallments.index(current_status) + 1]
 
     registration.save()
-    admins_transaction_report_emails.delay(transaction_history, school_id, registration.student)
+    
+    # Serializer student and send email to school admins
+    student = StudentSerializer(registration.student).data
+
+    admins_transaction_report_emails.delay(transaction_history, school_id, student)
 
 
 @api_view(['POST'])
