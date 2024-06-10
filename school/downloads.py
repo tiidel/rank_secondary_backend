@@ -89,12 +89,12 @@ def download_class_list(request, class_id):
     
     
     writer = csv.writer(response)
-    writer.writerow(['Full Name', 'Username', 'Email', 'Date Joined'])
+    writer.writerow(['Full Name', 'Matricule', 'Email', 'Date Joined', 'Gaurdian Contact'])
     
     students = cls.students.all().order_by('user__first_name')
     
     for student in students:
-        writer.writerow([f'{student.user.first_name} {student.user.last_name}', student.user.username, student.user.email, student.user.created_at])
+        writer.writerow([f'{student.user.first_name} {student.user.last_name}', student.matricule, student.user.email, student.user.created_at, student.guardians.user.phone ])
 
     return response
 
