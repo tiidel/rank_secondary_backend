@@ -40,6 +40,7 @@ TENANT_APPS = [
     'school',
     'core',
     'commerce',
+    'library',
 ]
 
 SHARED_APPS = [
