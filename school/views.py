@@ -2409,58 +2409,67 @@ class RegistrationListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        active_program = Program.get_active_program()
+        try:
+            with transaction.atomic():
+                active_program = Program.get_active_program()
+                if not active_program:
+                    return Response({"error": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not active_program:
-            return Response({"error": "No active program found"}, status=status.HTTP_404_NOT_FOUND)
+                student_id = request.data.get('student')
+                student = Student.objects.filter(id=student_id).first()
+                if not student:
+                    return Response({"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                cls_reg = ClassFees.objects.filter(cls=student.student_class).first()   
+                if not cls_reg:
+                    return Response({"error": "Class fee not set for student's class"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                cls_reg_serializer = ClassFeeSerializer(cls_reg)
 
-        student_id = request.data.get('student')
+                existing_registration = Registration.objects.filter(
+                    student_id=student_id,
+                    year=active_program,
+                    is_deleted=False
+                ).first()
 
-        student = Student.objects.filter(id=student_id).first()
+                if existing_registration:
+                    transaction_id = existing_registration.generate_transaction_id()
+                    existing_registration.transaction_id = transaction_id
+                    existing_registration.save()
+                    serializer = self.serializer_class(existing_registration)
+                    return Response({"registration": serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_202_ACCEPTED)
+                
+                request.data.update({
+                    'year': active_program.id,
+                    'expected_ammount': cls_reg.fee_amount,
+                    'registration_expiry_date': active_program.academic_end,
+                    'registration_status': "none",
+                    'receiver': request.user.id
+                })
 
-        if not student:
-            return Response({"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+                serializer = self.serializer_class(data=request.data)
+                if serializer.is_valid():
+                    registration = serializer.save()
+                    
+                    # Create associated ServiceCharge
+                    service_charge = ServiceCharge.objects.create(
+                        amount=cls_reg.calculate_service_charge(),
+                        payment_date=timezone.now(),
+                        registration=registration,
+                        payment_status='pending',
+                        transaction_id=f'SC-{registration.transaction_id}'
+                    )
+                    response_data = {
+                        "registration": serializer.data,
+                        "class_fee": ClassFeeSerializer(cls_reg).data,
+                        "service_charge": ServiceChargeSerializer(service_charge).data
+                    }
+                    return Response(response_data, status=status.HTTP_201_CREATED)
+                
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        cls_reg = ClassFees.objects.filter(cls=student.student_class).first()   
-
-        if not cls_reg:
-            return Response({"error": "Class fee not set for student's class"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        cls_reg_serializer = ClassFeeSerializer(cls_reg)
-
-            
-
-        # Check for existing registration for the active program year
-        existing_registration = Registration.objects.filter(
-            student_id=student_id,
-            year=active_program,
-            is_deleted=False
-        ).first()
-
-        # If registration exists, return the existing registration
-        if existing_registration:
-            transaction_id = existing_registration.generate_transaction_id()
-            existing_registration.transaction_id = transaction_id
-            existing_registration.save()
-
-            serializer = self.serializer_class(existing_registration)
-
-            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_202_ACCEPTED)
-  
-        
-        # No existing registration, proceed to create a new one
-        request.data['year'] = active_program.id  
-        request.data['expected_ammount'] = cls_reg.fee_amount
-        request.data['registration_expiry_date'] = active_program.academic_end
-        request.data['registration_status'] = "none"
-        request.data['receiver'] = request.user.id
-
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({ "registration":serializer.data, "class_fee": cls_reg_serializer.data}, status=status.HTTP_202_ACCEPTED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -2603,6 +2612,7 @@ class PromoteStudentAPIView(APIView):
 class RegisterPaymentAPIView(APIView):
     serializer_class = FeePaymentSerializer
     permission_classes = [IsAuthenticated]
+    
     def get(self, request): 
         payments = Payment.objects.all()
         serializer = self.serializer_class(payments, many=True)
@@ -2616,12 +2626,14 @@ class RegisterPaymentAPIView(APIView):
         if not (amount and registration):
             return Response({'error': 'Incomplete payment data. Providee registration_id and amount'}, status=status.HTTP_400_BAD_REQUEST)
         
-        registration = None
         try:
             registration = Registration.objects.filter(id=registration).first()
         except Registration.DoesNotExist:
             return Response({'error': 'Invalid registration ID'}, status=status.HTTP_400_BAD_REQUEST)
         
+        service_charge = ServiceCharge.objects.filter(registration=registration).first()
+        if not service_charge or not service_charge.is_complete:
+            return Response({'error': 'Service charge must be paid before paying fees'}, status=status.HTTP_403_FORBIDDEN)
         
         
         data['depositor'] = request.user.id
@@ -2630,10 +2642,19 @@ class RegisterPaymentAPIView(APIView):
         serializer = self.serializer_class(data=data)
 
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                with transaction.atomic():
+                    payment = serializer.save()
+                    
+                    registration.payed_ammount += float(amount)
+                    registration.save()
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # @api_view(['GET'])

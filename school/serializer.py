@@ -195,6 +195,11 @@ class RegistrationFetchSerializer(serializers.ModelSerializer):
         model = Registration
         fields = '__all__'
 
+class ServiceChargeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceCharge
+        fields = '__all__'
+
 
 
 class StudentRegistrationSerializer(serializers.ModelSerializer):

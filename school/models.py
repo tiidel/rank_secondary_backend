@@ -453,25 +453,6 @@ class StudentClassRelation(models.Model):
 
     grade = models.CharField(_("Grade of student"), max_length=10, null=True, blank=True)
 
-
-class ClassFees(models.Model):
-    cls =  models.ForeignKey(Class, on_delete=models.CASCADE)
-
-    fee_amount = models.IntegerField(_("Total amount of money to be payed by students in this class"))
-
-    first_installment = models.IntegerField(_("First installment of this fee"))
-
-    second_installment = models.IntegerField(_("Second installment of this fee"), null=True, blank=True)
-
-    third_installment = models.IntegerField(_("Third installment of this fee"), null=True, blank=True)
-
-    class Meta:
-        verbose_name = _("class Fee"),
-        verbose_name_plural = _("class Fees")
-
-    def __str__(self):
-        return f"Class {self.cls.class_name} - {self.fee_amount}"
-
     
 
 class Staff(BaseModel):
@@ -794,6 +775,33 @@ class Grade(models.Model):
 
 
 
+class ClassFees(models.Model):
+    cls =  models.ForeignKey(Class, on_delete=models.CASCADE)
+
+    fee_amount = models.IntegerField(_("Total amount of money to be payed by students in this class"))
+
+    first_installment = models.IntegerField(_("First installment of this fee"))
+
+    second_installment = models.IntegerField(_("Second installment of this fee"), null=True, blank=True)
+
+    third_installment = models.IntegerField(_("Third installment of this fee"), null=True, blank=True)
+
+    service_charge_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=1.00)
+
+    class Meta:
+        verbose_name = _("class Fee"),
+        verbose_name_plural = _("class Fees")
+
+    def __str__(self):
+        return f"Class {self.cls.class_name} - {self.fee_amount}"
+    
+    def calculate_service_charge(self):
+        return (self.fee_amount * self.service_charge_percentage) / 100
+
+    def total_fee_with_service_charge(self):
+        return self.fee_amount + self.calculate_service_charge()
+
+
 class Registration(BaseModel):
     
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
@@ -814,7 +822,7 @@ class Registration(BaseModel):
 
     payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
 
-    charge = models.ForeignKey('ServiceCharge', on_delete=models.SET_NULL, null=True)
+    service_charge = models.ForeignKey('ServiceCharge', on_delete=models.SET_NULL, null=True, blank=True)
     
     paid_charges = models.BooleanField(_("Check if user has paid their platform charge before proceeding with registration"), default=False)
     
@@ -828,6 +836,19 @@ class Registration(BaseModel):
 
     notes = models.TextField(blank=True, null=True)
 
+    SERVICE_CHARGE_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+    ]
+    service_charge_status = models.CharField(
+        max_length=10, 
+        choices=SERVICE_CHARGE_STATUS_CHOICES, 
+        default='pending'
+    )
+
+    def can_pay_fees(self):
+        return self.service_charge_status == 'paid'
+
     class Meta:
         
         verbose_name = _("Registration")
@@ -837,11 +858,17 @@ class Registration(BaseModel):
     def __str__(self):
         return f"{self.student.user.email} {self.registration_status}"
 
+ 
     def save(self, *args, **kwargs):
         if not self.transaction_id:
             self.transaction_id = self.generate_transaction_id()
 
+        if not self.expected_ammount:
+            class_fees = ClassFees.objects.get(cls=self.student.student_class)
+            self.expected_ammount = class_fees.fee_amount
+
         super().save(*args, **kwargs)
+
 
     def generate_transaction_id(self):
         current_date = timezone.now().date()
@@ -851,6 +878,16 @@ class Registration(BaseModel):
         transaction_id = f'Rank{current_date.strftime("%Y%m%d")}{self.transaction_count + 1:09d}'
         
         return transaction_id
+
+    def is_service_charge_paid(self):
+        return self.service_charge and self.service_charge.is_complete
+
+    def can_register(self):
+        return self.is_service_charge_paid() and self.payed_ammount >= self.expected_ammount
+
+    def amount_due(self):
+        class_fees = ClassFees.objects.get(cls=self.student.student_class)
+        return class_fees.fee_amount - self.payed_ammount
 
 
 class Subscription(models.Model):
@@ -929,7 +966,14 @@ class ServiceCharge(models.Model):
     created_at = models.DateTimeField(_("create date"), auto_now_add=True)
 
     created_by = models.CharField( _("Email of user who creates model"), max_length=100, null=True, blank=True)
+
+    registration = models.OneToOneField(Registration, on_delete=models.CASCADE, related_name='service_charge_registration')
     
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_complete and self.registration:
+            self.registration.paid_charges = True
+            self.registration.save()
     class Meta:
         
         verbose_name = _("ServiceCharge")
@@ -941,7 +985,10 @@ class ServiceCharge(models.Model):
     
 
 class Payment(models.Model):
-
+    """
+    Model: Manage payment of fees of student (Registration/Tuition) for an academic year
+    Author: kimbidarl@gmail.com
+    """
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE)
 
     installment_number = models.IntegerField(null=True, blank=True)
@@ -1002,6 +1049,49 @@ class Payment(models.Model):
         transaction_id = f'Rank-P{current_date.strftime("%Y%m%d")}{self.transaction_count + 1:09d}'
         
         return transaction_id
+    
+
+class RegistrationService:
+    @staticmethod
+    def initiate_registration(student, academic_year):
+        class_fees = ClassFees.objects.get(cls=student.student_class)
+        
+        registration = Registration.objects.create(
+            student=student,
+            year=academic_year,
+            expected_ammount=class_fees.fee_amount
+        )
+
+        service_charge = ServiceCharge.objects.create(
+            amount=class_fees.calculate_service_charge(),
+            payment_date=timezone.now(),
+            registration=registration
+        )
+
+        return registration, service_charge
+
+    @staticmethod
+    def process_service_charge_payment(service_charge, payment_data):
+        # Implement payment processing logic here
+        # Update service_charge fields based on payment result
+        service_charge.is_complete = True  # Set this based on actual payment result
+        service_charge.save()
+
+    @staticmethod
+    def process_registration_fee_payment(registration, amount, payment_data):
+        if not registration.is_service_charge_paid():
+            raise ValueError("Service charge must be paid before registration fee")
+
+        # Implement payment processing logic here
+        payment = Payment.objects.create(
+            registration=registration,
+            amount=amount,
+            # Set other fields based on payment data
+        )
+        registration.payed_ammount += amount
+        registration.save()
+
+        return payment
     
 
 class Guardian(BaseModel):
