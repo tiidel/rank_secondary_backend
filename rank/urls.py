@@ -39,7 +39,6 @@ urlpatterns = [
     path('api/v1/auth/', include('core.urls'), name="AUTH"),
     path('api/v1/', include('school.urls'), name='SCHOOL'),
     path('api/v1/commerce/', include('commerce.urls'), name='SCHOOL STORE'),
-    path('api/v1/library/', include('library.urls')),
 
    #  ADMIN
     path('admin/', admin.site.urls),

@@ -408,7 +408,7 @@ class Class(models.Model):
     Description: Describes the class where student belongs
     Author: kimbidarl@gmail.com
     """
-    level = models.ForeignKey('school.Level', on_delete=models.CASCADE, null=True)
+    level = models.ForeignKey('Level', on_delete=models.CASCADE, null=True)
 
     class_name = models.CharField(_("e.g form one or lower sixth"), max_length=100)
     
@@ -822,7 +822,7 @@ class Registration(BaseModel):
 
     payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
 
-    service_charge = models.ForeignKey('ServiceCharge', on_delete=models.SET_NULL, null=True, blank=True)
+    service_charge = models.ForeignKey('ServiceCharge', related_name="registration_service_charges", on_delete=models.SET_NULL, null=True, blank=True)
     
     paid_charges = models.BooleanField(_("Check if user has paid their platform charge before proceeding with registration"), default=False)
     
@@ -1051,48 +1051,6 @@ class Payment(models.Model):
         return transaction_id
     
 
-class RegistrationService:
-    @staticmethod
-    def initiate_registration(student, academic_year):
-        class_fees = ClassFees.objects.get(cls=student.student_class)
-        
-        registration = Registration.objects.create(
-            student=student,
-            year=academic_year,
-            expected_ammount=class_fees.fee_amount
-        )
-
-        service_charge = ServiceCharge.objects.create(
-            amount=class_fees.calculate_service_charge(),
-            payment_date=timezone.now(),
-            registration=registration
-        )
-
-        return registration, service_charge
-
-    @staticmethod
-    def process_service_charge_payment(service_charge, payment_data):
-        # Implement payment processing logic here
-        # Update service_charge fields based on payment result
-        service_charge.is_complete = True  # Set this based on actual payment result
-        service_charge.save()
-
-    @staticmethod
-    def process_registration_fee_payment(registration, amount, payment_data):
-        if not registration.is_service_charge_paid():
-            raise ValueError("Service charge must be paid before registration fee")
-
-        # Implement payment processing logic here
-        payment = Payment.objects.create(
-            registration=registration,
-            amount=amount,
-            # Set other fields based on payment data
-        )
-        registration.payed_ammount += amount
-        registration.save()
-
-        return payment
-    
 
 class Guardian(BaseModel):
     
