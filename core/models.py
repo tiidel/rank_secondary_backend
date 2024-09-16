@@ -119,6 +119,7 @@ class User(AbstractBaseUser, PermissionsMixin, TrackingModel):
         _("username"),
         max_length=150,
         blank=True,
+        null=True,
         help_text=_(
             "Optional. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
         ),
