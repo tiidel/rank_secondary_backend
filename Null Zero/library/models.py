@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from core.models import BaseModel
@@ -113,17 +114,32 @@ class Librarian(BaseModel):
 
 
 class BookCopy(BaseModel):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='copies')
     accession_number = models.CharField(max_length=20, unique=True)
     is_available = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.book.title} - {self.accession_number}"
-    
+
+
+    def checkout(self):
+        """Mark this copy as checked out """
+        if not self.is_available:
+            raise ValueError("Book is not available")
+        self.is_available = False
+        self.save()
+
+    def return_book(self):
+        """Mark this copy as returned """
+        if self.is_available:
+            raise ValueError("Book is available")
+        self.is_available = True
+        self.save()
+
 
 class BookLoan(BaseModel):
 
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    book_copy = models.ForeignKey(BookCopy, on_delete=models.CASCADE, related_name='loans')
 
     member = models.ForeignKey(LibraryMember, on_delete=models.CASCADE)
 
@@ -142,9 +158,22 @@ class BookLoan(BaseModel):
     fine_amount = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
 
     def __str__(self):
-        return f"{self.book.title} - {self.member.user.get_full_name()}"
+        return f"{self.book_copy.book.title} - {self.member.user.get_full_name()}"
 
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        if is_new and not self.is_returned:
+            if not self.book_copy.is_available:
+                raise ValidationError("This book copy is not available for loan")
+            self.book_copy.checkout()
+
+        if not is_new and self.is_returned and self.return_date:
+            original = BookLoan.objects.get(pk=self.pk)
+            if not original.is_returned:
+                self.book_copy.return_book()
+
+        super().save(*args, **kwargs)
 
 
 class Reservation(BaseModel):
@@ -170,7 +199,7 @@ class Reservation(BaseModel):
 
 class Fine(BaseModel):
 
-    loan = models.ForeignKey(BookLoan, on_delete=models.CASCADE)
+    loan = models.ForeignKey(BookLoan, on_delete=models.CASCADE, related_name='fine')
 
     amount = models.DecimalField(max_digits=6, decimal_places=2)
 
@@ -183,9 +212,13 @@ class Fine(BaseModel):
     payment_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.loan.book.title} - {self.loan.member.user.get_full_name()} - {self.amount}"
+        return f"{self.loan.book_copy.book.title} - {self.loan.member.user.get_full_name()} - {self.amount}"
 
-
+    def mark_as_paid(self):
+        if self.is_paid:
+            raise ValueError("Fine is already paid")
+        self.is_paid = True
+        self.save()
 
 class LibraryCard(BaseModel):
 

@@ -1,9 +1,11 @@
+import os
+
 import requests
-from decouple import config
+from dotenv import load_dotenv
 
 def flutterwave_verify_transaction(transaction_id):
     # Replace 'YOUR_API_KEY' with your actual Flutterwave API key
-    API_KEY = config('FW_PUBLIC_KEY')
+    API_KEY = os.getgid('FW_PUBLIC_KEY')
     VERIFY_URL = f'https://api.flutterwave.com/v3/transactions/{transaction_id}/verify'
     
     headers = {

@@ -1,7 +1,7 @@
 from pathlib import Path
-from decouple import config
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 from firebase_admin import initialize_app, credentials
 
@@ -14,14 +14,14 @@ TEMPLATES_DIRS = os.path.join(BASE_DIR, 'templates')
 FRONTEND_DOMAIN = 'https://rankafrica.net'
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG')
+DEBUG = os.getenv('DEBUG')
 
 
 FCM_DJANGO_SETTINGS = {
-    "FCM_SERVER_KEY": config('FIREBASE_SERVER_KEY'),
+    "FCM_SERVER_KEY": os.getenv('FIREBASE_SERVER_KEY'),
     "DEFAULT_FIREBASE_APP": None,
     "ONE_DEVICE_PER_USER": False,
     "DELETE_INACTIVE_DEVICES": False,
@@ -71,7 +71,7 @@ SHARED_APPS = [
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS ]
 AUTH_USER_MODEL = 'core.user'
-FLUTTERWAVE_SECRET_KEY = config('FW_SECRET_KEY')
+FLUTTERWAVE_SECRET_KEY = os.getenv('FW_SECRET_KEY')
 
 
 MIDDLEWARE = [
@@ -206,8 +206,8 @@ SIMPLE_JWT = {
 }
 
 ## CELERY BROKER SETTING
-CELERY_BROKER_URL = config('CELERY_URL')
-CELERY_RESULT_BACKEND =  config('CELERY_URL')
+CELERY_BROKER_URL = os.getenv('CELERY_URL')
+CELERY_RESULT_BACKEND =  os.getenv('CELERY_URL')
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
@@ -227,9 +227,9 @@ CELERY_WORKER_CONCURRENCY = 4
 ## CONFIGURATION FOR MAIL SERVER
 EMAIL_USE_TLS = True     
 EMAIL_HOST='smtp.gmail.com'
-EMAIL_PORT=config('EMAIL_PORT')
-EMAIL_HOST_USER= config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD= config('EMAIL_HOST_PASSWORD')
+EMAIL_PORT=os.getenv('EMAIL_PORT')
+EMAIL_HOST_USER= os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD= os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'
 
 ## TENANT MANAGEMENT
