@@ -1,9 +1,14 @@
+import datetime
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
+
 from core.models import BaseModel
 from school.models import Student, Staff, Class, School, Program
-from django.db.models import Max
+from django.db.models import Max, Sum
+
 
 class Book(BaseModel):
 
@@ -195,6 +200,44 @@ class Reservation(BaseModel):
     def __str__(self):
         return f"{self.book.title} - {self.member.user.get_full_name()}"
 
+    class Meta:
+        ordering = ('-reservation_date',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['book', 'member'],
+                condition=models.Q(re_status="PENDING"),
+                name='unique_pending_reservation'
+            )
+        ]
+
+    def clean(self):
+        if self.book.available_copies > 0:
+            raise ValidationError("Cannot reserve a book that is currently available")
+        pending_count = Reservation.objects.filter(member = self.member, status="PENDING").count()
+
+        if pending_count > 5 and not self.pk:
+            raise ValidationError("Member cannot have more than 5 pending reservations")
+
+    def save(self, *args, **kwargs):
+        if not self.expiry_date:(
+            self.expiry_date) = timezone.now() + datetime.timedelta(days=30)
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def fulfill(self):
+        if self.status != 'PENDING':
+            raise ValidationError("Only pending reservations can be fulfilled")
+        self.status = 'FULFILLED'
+        self.save()
+
+    def cancel(self):
+        """Cancel a reservation"""
+        if self.status not in ['PENDING', 'FULFILLED']:
+            raise ValidationError("Cannot cancel a reservation that is already completed or expired")
+
+        self.status = 'CANCELLED'
+        self.save()
+
 
 
 class Fine(BaseModel):
@@ -232,3 +275,69 @@ class LibraryCard(BaseModel):
 
     def __str__(self):
         return f"{self.member.user.get_full_name()} - {self.card_number}"
+
+
+class LibraryStatistics(BaseModel):
+    """ User for Daily snapshot of library statistics """
+    date = models.DateField(unique=True)
+    total_books = models.IntegerField()
+    total_members = models.IntegerField()
+    active_loans = models.IntegerField()
+    overdue_loans = models.IntegerField()
+    new_members = models.IntegerField()
+    books_added = models.IntegerField()
+    total_reservations = models.IntegerField()
+    fine_amount_collected = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ['-date']
+
+    @classmethod
+    def generate_daily_stats(cls):
+        """Generate statistics for today"""
+        today = timezone.now().date()
+        yesterday = today - datetime.timedelta(days=1)
+
+        # Calculate statistics
+        total_books = Book.objects.count()
+        total_members = LibraryMember.objects.count()
+        active_loans = BookLoan.objects.filter(is_returned=False).count()
+        overdue_loans = BookLoan.objects.filter(
+            is_returned=False,
+            due_date__lt=today
+        ).count()
+
+        # New members today
+        new_members = LibraryMember.objects.filter(
+            created_at__date=today
+        ).count()
+
+        # Books added today
+        books_added = Book.objects.filter(
+            created_at__date=today
+        ).count()
+
+        # Total pending reservations
+        total_reservations = Reservation.objects.filter(
+            status='PENDING'
+        ).count()
+
+        # Fine amount collected today
+        fine_amount = Fine.objects.filter(
+            payment_date__date=today
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        stats, created = cls.objects.update_or_create(
+            date=today,
+            defaults={
+                'total_books': total_books,
+                'total_members': total_members,
+                'active_loans': active_loans,
+                'overdue_loans': overdue_loans,
+                'new_members': new_members,
+                'books_added': books_added,
+                'total_reservations': total_reservations,
+                'fine_amount_collected': fine_amount
+            }
+        )
+        return stats

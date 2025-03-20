@@ -1,13 +1,17 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Count
+from django.utils import timezone
 from rest_framework.decorators import action
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from django.shortcuts import get_object_or_404
-from .models import Book, LibraryMember, BookLoan, Category, BookCopy, Fine
+from .models import Book, LibraryMember, BookLoan, Category, BookCopy, Fine, Reservation, LibraryStatistics
 from .serializers import BookSerializer, LibraryMemberSerializer, BookLoanSerializer, CategorySerializer, \
-    BookCopySerializer, BookCopyCheckoutSerializer, BookCopyReturnSerializer, FineSerializer, FinePaymentSerializer
+    BookCopySerializer, BookCopyCheckoutSerializer, BookCopyReturnSerializer, FineSerializer, FinePaymentSerializer, \
+    ReservationSerializer, LibraryStatisticsSerializer
 
 
 class CategoryAPIView(ListCreateAPIView):
@@ -190,3 +194,87 @@ class FineViewSet(viewsets.ModelViewSet):
         )
 
         return Response(summaries)
+
+
+class ReservationViewSet(viewsets.ModelViewSet):
+    queryset = Reservation.objects.all()
+    serializer_class = ReservationSerializer
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a reservation"""
+        reservation = self.get_object()
+        try:
+            reservation.cancel()
+            return Response({'status': 'Reservation cancelled'})
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def fulfill(self, request, pk=None):
+        """Mark a reservation as fulfilled"""
+        reservation = self.get_object()
+        try:
+            reservation.fulfill()
+            return Response({'status': 'Reservation fulfilled'})
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+class DashboardView(APIView):
+    """API view providing dashboard statistics"""
+
+    def get(self, request):
+        today = timezone.now().date()
+
+        # Get latest statistics or generate if not available for today
+        try:
+            latest_stats = LibraryStatistics.objects.get(date=today)
+        except LibraryStatistics.DoesNotExist:
+            latest_stats = LibraryStatistics.generate_daily_stats()
+
+        current_month = timezone.now().month
+        current_year = timezone.now().year
+
+        # Most borrowed books this month
+        most_borrowed = (
+            BookLoan.objects.filter(
+                loan_date__month=current_month,
+                loan_date__year=current_year
+            )
+            .values('book__title')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:5]
+        )
+
+        # Members with most overdue books
+        members_with_overdue = (
+            BookLoan.objects.filter(
+                is_returned=False,
+                due_date__lt=today
+            )
+            .values('member__user__username', 'member__user__first_name', 'member__user__last_name')
+            .annotate(overdue_count=Count('id'))
+            .order_by('-overdue_count')[:5]
+        )
+
+        # Top categories by loans
+        top_categories = (
+            BookLoan.objects.filter(
+                loan_date__month=current_month,
+                loan_date__year=current_year
+            )
+            .values('book__categories__name')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:5]
+        )
+
+        return Response({
+            'current_stats': LibraryStatisticsSerializer(latest_stats).data,
+            'most_borrowed_books': most_borrowed,
+            'members_with_overdue': members_with_overdue,
+            'top_categories': top_categories
+        })

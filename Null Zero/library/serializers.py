@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.relations import PrimaryKeyRelatedField
 
-from .models import Book, LibraryMember, BookLoan, Category, BookCopy, Fine
+from .models import Book, LibraryMember, BookLoan, Category, BookCopy, Fine, Reservation, LibraryStatistics
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -133,3 +133,50 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'description']
+
+
+class ReservationSerializer(serializers.ModelSerializer):
+    member_name = serializers.SerializerMethodField()
+    book_title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Reservation
+        fields = [
+            'id', 'book', 'member', 'reservation_date', 'expiry_date',
+            'status', 'member_name', 'book_title'
+        ]
+        read_only_fields = ['reservation_date', 'status']
+
+    def get_member_name(self, obj):
+        return obj.member.user.get_full_name()
+
+    def get_book_title(self, obj):
+        return obj.book.title
+
+    def validate(self, data):
+        book = data.get('book')
+        if book and book.available_copies > 0:
+            raise serializers.ValidationError(
+                {"book": "Cannot reserve a book that is currently available"}
+            )
+
+        # Check if member has too many pending reservations
+        member = data.get('member')
+        if member:
+            pending_count = Reservation.objects.filter(
+                member=member,
+                status='PENDING'
+            ).count()
+
+            if pending_count >= 5:
+                raise serializers.ValidationError(
+                    {"member": "Member cannot have more than 5 pending reservations"}
+                )
+
+        return data
+
+
+class LibraryStatisticsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LibraryStatistics
+        fields = '__all__'
