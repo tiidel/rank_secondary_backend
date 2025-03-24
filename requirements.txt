@@ -64,7 +64,6 @@ pycryptodome==3.19.1
 PyJWT==2.8.0
 pyparsing==3.1.1
 Pyrebase4==4.7.1
-pyscopg2==66.0.2
 python-dateutil==2.9.0.post0
 python-decouple==3.8
 python-dotenv==1.0.0
