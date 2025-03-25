@@ -116,6 +116,7 @@ class Terms(models.Model):
         active_terms = cls.objects.filter(start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
         if active_terms.exists():
             return active_terms.first()
+
         return None
     class Meta:
         
