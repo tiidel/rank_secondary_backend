@@ -8,14 +8,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from django.shortcuts import get_object_or_404
-from .models import Book, LibraryMember, BookLoan, Category, BookCopy, Fine, Reservation, LibraryStatistics
+from .models import Book, LibraryMember, BookLoan, LibraryCategory, BookCopy, Fine, Reservation, LibraryStatistics
 from .serializers import BookSerializer, LibraryMemberSerializer, BookLoanSerializer, CategorySerializer, \
     BookCopySerializer, BookCopyCheckoutSerializer, BookCopyReturnSerializer, FineSerializer, FinePaymentSerializer, \
     ReservationSerializer, LibraryStatisticsSerializer
 
 
 class CategoryAPIView(ListCreateAPIView):
-    queryset = Category.objects.all()
+    queryset = LibraryCategory.objects.all()
     serializer_class = CategorySerializer
 
 
@@ -245,7 +245,7 @@ class DashboardView(APIView):
                 loan_date__month=current_month,
                 loan_date__year=current_year
             )
-            .values('book__title')
+            .values('book_copy__book_copy__title')
             .annotate(count=Count('id'))
             .order_by('-count')[:5]
         )
@@ -256,7 +256,7 @@ class DashboardView(APIView):
                 is_returned=False,
                 due_date__lt=today
             )
-            .values('member__user__username', 'member__user__first_name', 'member__user__last_name')
+            .values('member__user__user__username', 'member__user__user__first_name', 'member__user__user__first_name')
             .annotate(overdue_count=Count('id'))
             .order_by('-overdue_count')[:5]
         )
@@ -267,7 +267,7 @@ class DashboardView(APIView):
                 loan_date__month=current_month,
                 loan_date__year=current_year
             )
-            .values('book__categories__name')
+            .values('book_copy__book_copy__categories__name')
             .annotate(count=Count('id'))
             .order_by('-count')[:5]
         )

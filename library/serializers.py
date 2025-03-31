@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.relations import PrimaryKeyRelatedField
 
-from .models import Book, LibraryMember, BookLoan, Category, BookCopy, Fine, Reservation, LibraryStatistics
+from .models import Book, LibraryMember, BookLoan, LibraryCategory, BookCopy, Fine, Reservation, LibraryStatistics
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -105,7 +105,7 @@ class FineSerializer(serializers.ModelSerializer):
         return obj.loan.member.user.get_full_name()
 
     def get_book_title(self, obj):
-        return obj.loan.book_copy.book.title
+        return obj.loan.book_copy.book_copy.title
 
     def validate(self, data):
         if data.get('amount', 0) <= 0:
@@ -131,7 +131,7 @@ class FinePaymentSerializer(serializers.Serializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Category
+        model = LibraryCategory
         fields = ['id', 'name', 'description']
 
 
@@ -142,7 +142,7 @@ class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservation
         fields = [
-            'id', 'book', 'member', 'reservation_date', 'expiry_date',
+            'id', 'reserver_book', 'member', 'reservation_date', 'expiry_date',
             'status', 'member_name', 'book_title'
         ]
         read_only_fields = ['reservation_date', 'status']
@@ -151,7 +151,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         return obj.member.user.get_full_name()
 
     def get_book_title(self, obj):
-        return obj.book.title
+        return obj.book_copy.title
 
     def validate(self, data):
         book = data.get('book')

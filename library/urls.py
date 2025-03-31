@@ -12,13 +12,13 @@ router.register(r'fine', FineViewSet)
 router.register(r'bookcopy', BookCopyViewSet)
 router.register(r'reservation', ReservationViewSet)
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('library/', include(router.urls)),
     path('books/', BookListView.as_view(), name='book-list'),
-    path('books/<int:pk>/', BookDetailView.as_view(), name='book-detail'),
+    path('books/<uuid:pk>/', BookDetailView.as_view(), name='book-detail'),
     path('members/', LibraryMemberListView.as_view(), name='member-list'),
-    path('members/<int:pk>/', LibraryMemberDetailView.as_view(), name='member-detail'),
+    path('members/<uuid:pk>/', LibraryMemberDetailView.as_view(), name='member-detail'),
     path('categories/', CategoryAPIView.as_view(), name='category'),
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('loans/', BookLoanListView.as_view(), name='loan-list'),
-    path('loans/<int:pk>/', BookLoanDetailView.as_view(), name='loan-detail'),
+    path('loans/<uuid:pk>/', BookLoanDetailView.as_view(), name='loan-detail'),
 ]

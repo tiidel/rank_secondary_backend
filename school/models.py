@@ -325,7 +325,7 @@ class Program(BaseModel):
     
     terms = models.ManyToManyField("Terms", verbose_name=_("program_terms"))
     
-    events = models.ManyToManyField("Event", verbose_name=_("name"), null=True)
+    events = models.ManyToManyField("Event", verbose_name=_("name"))
     
     academic_start = models.DateField(_("Date school starts"))
     
@@ -423,11 +423,11 @@ class Class(models.Model):
     
     h_o_d = models.CharField(max_length=100, null=True, blank=True)
 
-    students = models.ManyToManyField('school.Student', through='StudentClassRelation')
+    students = models.ManyToManyField('Student', through='StudentClassRelation')
 
-    subjects = models.ManyToManyField('Subject', related_name='classes', null=True)
+    subjects = models.ManyToManyField('Subject', related_name='classes')
     
-    siblings = models.ManyToManyField('self', related_name='class_siblings', null=True)
+    siblings = models.ManyToManyField('self')
 
     full_name = models.CharField(_("e.g form one or lower sixth"), max_length=100, null=True, blank=True)
 
@@ -643,8 +643,13 @@ class Student(models.Model):
             existing_subjects = set(self.studentsubjects_set.values_list('subject_id', flat=True))
 
             active_program = Program.get_active_program()
-            terms = active_program.terms.all()
-            
+            if active_program:
+                terms = active_program.terms.all()
+
+            else:
+
+                terms = Terms.objects.none()
+
             for term in terms:
                 sequences = Sequence.objects.filter(term=term)
                 grade, _ = Grade.objects.get_or_create(student=self, classroom=class_instance, term=term)
@@ -821,7 +826,7 @@ class Registration(BaseModel):
     
     registration_status = models.CharField(_("fee installment. partial or complete"), null=True, choices=FeeInstallments.choices, max_length=50)
 
-    payments = models.ManyToManyField('Payment', related_name='registrationPayment', null=True)
+    payments = models.ManyToManyField('Payment', related_name='registrationPayment')
 
     service_charge = models.ForeignKey('ServiceCharge', related_name="registration_service_charges", on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -1104,7 +1109,7 @@ class Timetable(models.Model):
         
         daysOfWeek = models.JSONField(_("Days of the week as integers"), default=list)
         class Meta:
-            
+
             verbose_name = _("TimeTable")
             
             verbose_name_plural = _("TimeTables")

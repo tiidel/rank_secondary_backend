@@ -2,11 +2,10 @@ import datetime
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 from core.models import BaseModel
-from school.models import Student, Staff, Class, School, Program
+from school.models import Student, Staff, School, Program
 from django.db.models import Max, Sum
 
 
@@ -35,13 +34,13 @@ class Book(BaseModel):
 
     page_count = models.IntegerField(null=True, blank=True)
 
-    categories = models.ManyToManyField('Category', related_name='books')
+    categories = models.ManyToManyField('LibraryCategory', related_name='books')
 
     def __str__(self):
         return self.title
 
 
-class Category(BaseModel):
+class LibraryCategory(BaseModel):
     name = models.CharField(max_length=50)
 
     description = models.TextField(blank=True)
@@ -102,21 +101,21 @@ class LibraryMember(BaseModel):
 
 
 class Librarian(BaseModel):
-    staff = models.OneToOneField(Staff, on_delete=models.CASCADE)
+    library_staff = models.OneToOneField(Staff, on_delete=models.CASCADE)
 
     librarian_id = models.CharField(max_length=10, unique=True)
 
     def __str__(self):
-        return f"{self.staff.get_full_name()} - {self.librarian_id}"
+        return f"{self.library_staff.get_full_name()} - {self.librarian_id}"
 
 
 class BookCopy(BaseModel):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='copies')
+    book_copy = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='copies')
     accession_number = models.CharField(max_length=20, unique=True)
     is_available = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.book.title} - {self.accession_number}"
+        return f"{self.book_copy.title} - {self.accession_number}"
 
     def checkout(self):
         """Mark this copy as checked out """
@@ -138,7 +137,7 @@ class BookLoan(BaseModel):
 
     member = models.ForeignKey(LibraryMember, on_delete=models.CASCADE)
 
-    librarian = models.ForeignKey(Librarian, on_delete=models.CASCADE)
+    school_librarian = models.ForeignKey(Librarian, on_delete=models.CASCADE)
 
     loan_date = models.DateField(auto_now_add=True)
 
@@ -153,7 +152,7 @@ class BookLoan(BaseModel):
     fine_amount = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
 
     def __str__(self):
-        return f"{self.book_copy.book.title} - {self.member.user.get_full_name()}"
+        return f"{self.book_copy.book_copy.title} - {self.member.user.get_full_name()}"
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -171,7 +170,7 @@ class BookLoan(BaseModel):
 
 
 class Reservation(BaseModel):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    reserver_book = models.ForeignKey(Book, on_delete=models.CASCADE)
 
     member = models.ForeignKey(LibraryMember, on_delete=models.CASCADE)
 
@@ -186,22 +185,22 @@ class Reservation(BaseModel):
     ], default='PENDING')
 
     def __str__(self):
-        return f"{self.book.title} - {self.member.user.get_full_name()}"
+        return f"{self.reserver_book.title} - {self.member.user.get_full_name()}"
 
     class Meta:
         ordering = ('-reservation_date',)
         constraints = [
             models.UniqueConstraint(
-                fields=['book', 'member'],
-                condition=models.Q(re_status="PENDING"),
+                fields=['reserver_book', 'member'],
+                condition=models.Q(res_status="PENDING"),
                 name='unique_pending_reservation'
             )
         ]
 
     def clean(self):
-        if self.book.available_copies > 0:
+        if self.reserver_book.available_copies > 0:
             raise ValidationError("Cannot reserve a book that is currently available")
-        pending_count = Reservation.objects.filter(member=self.member, status="PENDING").count()
+        pending_count = Reservation.objects.filter(member=self.member, res_status="PENDING").count()
 
         if pending_count > 5 and not self.pk:
             raise ValidationError("Member cannot have more than 5 pending reservations")
@@ -213,17 +212,17 @@ class Reservation(BaseModel):
         super().save(*args, **kwargs)
 
     def fulfill(self):
-        if self.status != 'PENDING':
+        if self.res_status != 'PENDING':
             raise ValidationError("Only pending reservations can be fulfilled")
-        self.status = 'FULFILLED'
+        self.res_status = 'FULFILLED'
         self.save()
 
     def cancel(self):
         """Cancel a reservation"""
-        if self.status not in ['PENDING', 'FULFILLED']:
+        if self.res_status not in ['PENDING', 'FULFILLED']:
             raise ValidationError("Cannot cancel a reservation that is already completed or expired")
 
-        self.status = 'CANCELLED'
+        self.res_status = 'CANCELLED'
         self.save()
 
 
@@ -241,7 +240,7 @@ class Fine(BaseModel):
     payment_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.loan.book_copy.book.title} - {self.loan.member.user.get_full_name()} - {self.amount}"
+        return f"{self.loan.book_copy.book_copy.title} - {self.loan.member.user.get_full_name()} - {self.amount}"
 
     def mark_as_paid(self):
         if self.is_paid:
@@ -305,7 +304,7 @@ class LibraryStatistics(BaseModel):
 
         # Total pending reservations
         total_reservations = Reservation.objects.filter(
-            status='PENDING'
+            status=0
         ).count()
 
         fine_amount = Fine.objects.filter(
