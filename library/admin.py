@@ -5,7 +5,7 @@ from .models import *
 
 models = [
     Book,
-    Category,
+    LibraryCategory,
     LibraryMember,
     Librarian,
     BookCopy,

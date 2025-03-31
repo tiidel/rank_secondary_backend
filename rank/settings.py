@@ -40,11 +40,12 @@ TENANT_APPS = [
     'school',
     'core',
     'commerce',
+    'library',
 ]
 
 SHARED_APPS = [
     'core',
-    'commerce',
+    # 'commerce',
     'django_tenants',
     'tenant',
     'django.contrib.admin',
@@ -136,18 +137,27 @@ WSGI_APPLICATION = 'rank.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django_tenants.postgresql_backend',
+        'NAME': 'postgres',
+        'USER': 'ragrbugguk',
+        'PASSWORD': '#@!prodigy#676638050&&',
+        'HOST': 'rank-server.postgres.database.azure.com',
+        'PORT': '5432',
+    }
+}
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django_tenants.postgresql_backend',
-#         'NAME': 'postgres',
-#         'USER': 'ragrbugguk',
-#         'PASSWORD': '#@!prodigy#676638050&&',
-#         'HOST': 'rank-server.postgres.database.azure.com',
+#         'NAME': 'rank_system',
+#         'USER': 'postgres',
+#         'PASSWORD': 'admin',
+#         'HOST': 'localhost',
 #         'PORT': '5432',
 #     }
 # }
-
-
 
 DATABASE_ROUTERS = [
     'django_tenants.routers.TenantSyncRouter',
